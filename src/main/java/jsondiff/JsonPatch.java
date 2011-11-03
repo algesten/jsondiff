@@ -23,22 +23,19 @@ import com.google.gson.JsonObject;
  * <code>
  * {
  *   "key":     "replaced",           // added or replacing key
- *   "+key":    "replaced",           // added or replacing key (+ doesn't matter for primitive data types)
+ *   "~key":    "replaced",           // added or replacing key (~ doesn't matter for primitive data types)
  *   "key":     null,                 // added or replacing key with null.
- *   "+key":    null,                 // added or replacing key with null (+ doesn't matter for null)
+ *   "~key":    null,                 // added or replacing key with null (~ doesn't matter for null)
  *   "-key":    0                     // key removed regardless of value
  *   "key":     { "sub": "replaced" } // whole object "key" replaced
- *   "+key":    { "sub": "merged" }   // key "sub" merged into object "key", rest of object untouched
+ *   "~key":    { "sub": "merged" }   // key "sub" merged into object "key", rest of object untouched
  *   "key":     [ "replaced" ]        // whole array added/replaced
- *   "+key":    [ "replaced" ]        // whole array added/replaced (+ doesn't matter for arrays)
+ *   "~key":    [ "replaced" ]        // whole array added/replaced (~ doesn't matter for whole array)
  *   "key[4]":  { "sub": "replaced" } // object replacing element 4, rest of array untouched
- *   "+key[4]": { "sub": "merged"}    // merging object at element 4, rest of array untouched
- *   "key[-2]": { "sub": "replaced" } // object replacing at array end - 2, rest of array untouched
- *   "+key[-2]":{ "sub": "merged"}    // merging object at array end - 2, rest of array untouched
- *   "key+[4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
- *   "+key+[4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
+ *   "~key[4]": { "sub": "merged"}    // merging object at element 4, rest of array untouched
+ *   "key[+4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
+ *   "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
  *   "-key[4]:  0                     // removing element 4 regardless off value (current 5 becoming new 4)
- *   "-key[-2]: 0                     // removing element array end -2 regardless off value (current 5 becoming new 4)
  * }
  * </code>
  * </pre>
@@ -131,7 +128,7 @@ public class JsonPatch {
             // obj should now point to the element
             // arr should be the last array object
 
-            if (instr.oper == '+') {
+            if (instr.oper == '~') {
 
                 // looking out for objects and arrays since those
                 // are the only two being merged.
@@ -164,7 +161,7 @@ public class JsonPatch {
 
             }
 
-            // initial '+' and '-' has been stripped and dealt with
+            // initial '~' and '-' has been stripped and dealt with
             if (arr != null) {
 
                 if (instr.arrayInsert && !grew) {
@@ -206,6 +203,9 @@ public class JsonPatch {
                 if (begin > 0 && end > (begin + 1)) {
 
                     String indexStr = key.substring(begin + 1, end);
+                    if (indexStr.charAt(0) == '+') {
+                        indexStr = indexStr.substring(1);
+                    }
 
                     try {
                         int index = Integer.parseInt(indexStr);
@@ -324,8 +324,8 @@ public class JsonPatch {
                 oper = '-';
                 str = str.substring(1);
                 break;
-            case '+':
-                oper = '+';
+            case '~':
+                oper = '~';
                 str = str.substring(1);
                 break;
             default:
@@ -337,16 +337,13 @@ public class JsonPatch {
             boolean pArrayInsert = false;
             if (index != null) {
 
-                int t = str.lastIndexOf("+[");
+                int t = str.lastIndexOf("[+");
 
-                if (t == str.lastIndexOf('[') - 1) {
+                if (t == str.lastIndexOf('[')) {
                     pArrayInsert = true;
-                    str = str.substring(0, t);
                 }
 
-                if (str.indexOf('[') > 0) {
-                    str = str.substring(0, str.indexOf('['));
-                }
+                str = str.substring(0, str.indexOf('['));
 
             }
             this.arrayInsert = pArrayInsert;

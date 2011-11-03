@@ -12,7 +12,6 @@ import java.util.TreeSet;
 import jsondiff.incava.IncavaDiff;
 import jsondiff.incava.IncavaEntry;
 
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -30,22 +29,19 @@ import com.google.gson.JsonParser;
  * <code>
  * {
  *   "key":     "replaced",           // added or replacing key
- *   "+key":    "replaced",           // added or replacing key (+ doesn't matter for primitive data types)
+ *   "~key":    "replaced",           // added or replacing key (~ doesn't matter for primitive data types)
  *   "key":     null,                 // added or replacing key with null.
- *   "+key":    null,                 // added or replacing key with null (+ doesn't matter for null)
+ *   "~key":    null,                 // added or replacing key with null (~ doesn't matter for null)
  *   "-key":    0                     // key removed regardless of value
  *   "key":     { "sub": "replaced" } // whole object "key" replaced
- *   "+key":    { "sub": "merged" }   // key "sub" merged into object "key", rest of object untouched
+ *   "~key":    { "sub": "merged" }   // key "sub" merged into object "key", rest of object untouched
  *   "key":     [ "replaced" ]        // whole array added/replaced
- *   "+key":    [ "replaced" ]        // whole array added/replaced (+ doesn't matter for arrays)
+ *   "~key":    [ "replaced" ]        // whole array added/replaced (~ doesn't matter for whole array)
  *   "key[4]":  { "sub": "replaced" } // object replacing element 4, rest of array untouched
- *   "+key[4]": { "sub": "merged"}    // merging object at element 4, rest of array untouched
- *   "key[-2]": { "sub": "replaced" } // object replacing at array end - 2, rest of array untouched
- *   "+key[-2]":{ "sub": "merged"}    // merging object at array end - 2, rest of array untouched
- *   "key+[4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
- *   "+key+[4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
+ *   "~key[4]": { "sub": "merged"}    // merging object at element 4, rest of array untouched
+ *   "key[+4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
+ *   "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
  *   "-key[4]:  0                     // removing element 4 regardless off value (current 5 becoming new 4)
- *   "-key[-2]: 0                     // removing element array end -2 regardless off value (current 5 becoming new 4)
  * }
  * </code>
  * </pre>
@@ -191,7 +187,7 @@ public class JsonDiff {
         for (int i = 0; i < last; i++) {
 
             buildKey(keyBld, path, i);
-            keyBld.insert(0, '+');
+            keyBld.insert(0, '~');
 
             String key = keyBld.toString();
 
@@ -220,7 +216,7 @@ public class JsonDiff {
                     // not in deleted and has an array specifier,
                     // it's an inserted array member
                     int p = keyBld.lastIndexOf("[");
-                    keyBld.insert(p, '+');
+                    keyBld.insert(p + 1, '+');
 
                 }
 
