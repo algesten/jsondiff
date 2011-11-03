@@ -26,7 +26,7 @@ import com.google.gson.JsonObject;
  *   "~key":    "replaced",           // added or replacing key (~ doesn't matter for primitive data types)
  *   "key":     null,                 // added or replacing key with null.
  *   "~key":    null,                 // added or replacing key with null (~ doesn't matter for null)
- *   "-key":    0                     // key removed regardless of value
+ *   "-key":    0                     // key removed (value is ignored)
  *   "key":     { "sub": "replaced" } // whole object "key" replaced
  *   "~key":    { "sub": "merged" }   // key "sub" merged into object "key", rest of object untouched
  *   "key":     [ "replaced" ]        // whole array added/replaced
@@ -34,8 +34,9 @@ import com.google.gson.JsonObject;
  *   "key[4]":  { "sub": "replaced" } // object replacing element 4, rest of array untouched
  *   "~key[4]": { "sub": "merged"}    // merging object at element 4, rest of array untouched
  *   "key[+4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
- *   "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
- *   "-key[4]:  0                     // removing element 4 regardless off value (current 5 becoming new 4)
+ *   "~key[+4]":{ "sub": "array add"} // ERROR (nonsense)
+ *   "-key[4]:  0                     // removing element 4 current 5 becoming new 4 (value is ignored)
+ *   "-key[+4]: 0                     // ERROR (nonsense)
  * }
  * </code>
  * </pre>
@@ -90,7 +91,9 @@ public class JsonPatch {
 
                 boolean first = true;
 
-                for (int idx = 0; idx < instr.index.size(); idx++) {
+                for (int j = 0; j < instr.index.size(); j++) {
+
+                    int idx = instr.index.get(j);
 
                     if (obj != null && obj.isJsonArray()) {
 
@@ -349,6 +352,15 @@ public class JsonPatch {
             this.arrayInsert = pArrayInsert;
 
             this.key = str;
+
+            if (oper == '~' && arrayInsert) {
+                throw new IllegalArgumentException("~ at the same time as array insertion (nonsense): " + orig);
+            }
+
+            if (oper == '-' && arrayInsert) {
+                throw new IllegalArgumentException("- at the same time as array insertion (nonsense): " + orig);
+            }
+
 
         }
 

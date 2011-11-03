@@ -106,6 +106,63 @@ public class JsonPatchTest {
 
 
     @Test
+    public void testObjMergeToPrim() {
+
+        String n = JsonPatch.apply("{a:1}", "{~a:{b:1}}");
+        Assert.assertEquals("{\"a\":{\"b\":1}}", n);
+
+    }
+
+
+    @Test
+    public void testObjMergetToNull() {
+
+        String n = JsonPatch.apply("{a:null}", "{~a:{b:1}}");
+        Assert.assertEquals("{\"a\":{\"b\":1}}", n);
+
+    }
+
+
+    @Test
+    public void testObjMergetToArr() {
+
+        String n = JsonPatch.apply("{a:[1]}", "{~a:{b:1}}");
+        Assert.assertEquals("{\"a\":{\"b\":1}}", n);
+
+    }
+
+
+    @Test
+    public void testArrayAddBad() {
+
+        try {
+            JsonPatch.apply("{}", "{\"a[bad]\": 2}");
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+    }
+
+
+    @Test
+    public void testArrayAddFull() {
+
+        String n = JsonPatch.apply("{}", "{a:[0,1]}");
+        Assert.assertEquals("{\"a\":[0,1]}", n);
+
+    }
+
+
+    @Test
+    public void testArrayMergeFull() {
+
+        String n = JsonPatch.apply("{}", "{~a:[0,1]}");
+        Assert.assertEquals("{\"a\":[0,1]}", n);
+
+    }
+
+
+    @Test
     public void testArrayAddToEmpty() {
 
         String n = JsonPatch.apply("{a:[]}", "{\"a[+0]\":1}");
@@ -170,9 +227,36 @@ public class JsonPatchTest {
 
 
     @Test
+    public void testArrRemoveInsertMiddle() {
+        try {
+            JsonPatch.apply("{a:[0,1,2]}", "{\"-a[+1]\":null}");
+            Assert.fail();
+        } catch (IllegalArgumentException ie) {
+        }
+    }
+
+
+    @Test
     public void testAddRemoveOrderMatters() {
         String n = JsonPatch.apply("{a:[0,1,2]}", "{\"-a[0]\":null,\"-a[1]\":null,\"a[+1]\":3}");
         Assert.assertEquals("{\"a\":[2,3]}", n);
+    }
+
+
+    @Test
+    public void testArrObjMerge() {
+        String n = JsonPatch.apply("{a:[0,{b:1},3]}", "{\"~a[1]\":{c:2}}");
+        Assert.assertEquals("{\"a\":[0,{\"b\":1,\"c\":2},3]}", n);
+    }
+
+
+    @Test
+    public void testArrObjMergeInsert() {
+        try {
+            JsonPatch.apply("{a:[0,{b:1},3]}", "{\"~a[+1]\":{c:2}}");
+            Assert.fail();
+        } catch (IllegalArgumentException ie) {
+        }
     }
 
 }

@@ -32,7 +32,7 @@ import com.google.gson.JsonParser;
  *   "~key":    "replaced",           // added or replacing key (~ doesn't matter for primitive data types)
  *   "key":     null,                 // added or replacing key with null.
  *   "~key":    null,                 // added or replacing key with null (~ doesn't matter for null)
- *   "-key":    0                     // key removed regardless of value
+ *   "-key":    0                     // key removed (value is ignored)
  *   "key":     { "sub": "replaced" } // whole object "key" replaced
  *   "~key":    { "sub": "merged" }   // key "sub" merged into object "key", rest of object untouched
  *   "key":     [ "replaced" ]        // whole array added/replaced
@@ -41,7 +41,7 @@ import com.google.gson.JsonParser;
  *   "~key[4]": { "sub": "merged"}    // merging object at element 4, rest of array untouched
  *   "key[+4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
  *   "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
- *   "-key[4]:  0                     // removing element 4 regardless off value (current 5 becoming new 4)
+ *   "-key[4]:  0                     // removing element 4 current 5 becoming new 4 (value is ignored)
  * }
  * </code>
  * </pre>
