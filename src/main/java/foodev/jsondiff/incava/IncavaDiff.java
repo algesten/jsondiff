@@ -1,4 +1,4 @@
-package jsondiff.incava;
+package foodev.jsondiff.incava;
 
 import java.util.*;
 

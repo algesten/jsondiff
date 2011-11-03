@@ -1,4 +1,4 @@
-package jsondiff;
+package foodev.jsondiff;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,13 +9,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
-import jsondiff.incava.IncavaDiff;
-import jsondiff.incava.IncavaEntry;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import foodev.jsondiff.incava.IncavaDiff;
+import foodev.jsondiff.incava.IncavaEntry;
 
 
 /**

@@ -1,4 +1,4 @@
-package jsondiff;
+package foodev.jsondiff;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;

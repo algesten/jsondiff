@@ -1,4 +1,4 @@
-package jsondiff;
+package foodev.jsondiff;
 
 import org.junit.Assert;
 import org.junit.Test;

@@ -1,4 +1,4 @@
-package jsondiff.incava;
+package foodev.jsondiff.incava;
 
 /*
  Copyright (c) 2009, incava.org
