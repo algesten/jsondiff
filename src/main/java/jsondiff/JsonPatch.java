@@ -217,7 +217,7 @@ public class JsonPatch {
                         throw new IllegalArgumentException("Bad patch. Not a valid array index: " + key);
                     }
 
-                    from = end;
+                    from = end + 1;
 
                 }
 
@@ -307,6 +307,38 @@ public class JsonPatch {
     }
 
 
+    private static int compareArrays(boolean ascending,
+            ArrayList<Integer> l1, ArrayList<Integer> l2) {
+
+        if (l1 == null && l2 != null) {
+            return 1;
+        } else if (l1 != null && l2 == null) {
+            return -1;
+        } else if (l1 == null && l2 == null) {
+            return 0;
+        }
+
+        int i = 0;
+        while (true) {
+            if (i == l1.size()) {
+                if (i == l2.size()) {
+                    return 0;
+                } else {
+                    return -1;
+                }
+            }
+            if (i == l2.size()) {
+                return 1;
+            }
+            int d = (ascending ? 1 : -1) * (l1.get(i) - l2.get(i));
+            if (d != 0) {
+                return d;
+            }
+        }
+
+    }
+
+
     private static class Instruction implements Comparable<Instruction> {
 
         final String orig;
@@ -368,52 +400,23 @@ public class JsonPatch {
         @Override
         public int compareTo(Instruction o) {
 
-            if (oper != '-') {
+            int i = (int) o.oper - (int) oper;
 
-                if (o.oper == '-') {
+            if (i == 0) {
 
-                    return 1;
+                i = key.compareTo(o.key);
 
-                } else {
+                if (i == 0) {
 
-                    // none have -
-                    return key.compareTo(o.key);
+                    boolean ascending = oper != '-';
+                    i = compareArrays(ascending, index, o.index);
 
-                }
+                    if (i == 0) {
 
-            } else {
+                        i = (arrayInsert == o.arrayInsert ? 0 : (arrayInsert ? 1 : -1));
 
-                if (o.oper != '-') {
-
-                    return -1;
-
-                } else {
-
-                    if (index != null) {
-
-                        if (o.index == null) {
-                            return -1;
-                        } else {
-
-                            // both have arrays
-                            int i = 0;
-                            while (true) {
-                                if (i == index.size()) {
-                                    if (i == o.index.size()) {
-                                        throw new IllegalArgumentException("Found duplicate instruction: " + orig);
-                                    } else {
-                                        return -1;
-                                    }
-                                }
-                                if (i == o.index.size()) {
-                                    return 1;
-                                }
-                                int d = o.index.get(i) - index.get(i); // reverse deletion
-                                if (d != 0) {
-                                    return d;
-                                }
-                            }
-
+                        if (i == 0) {
+                            throw new IllegalArgumentException("Found duplicate instructions: " + orig);
                         }
 
                     }
@@ -422,7 +425,7 @@ public class JsonPatch {
 
             }
 
-            throw new IllegalStateException("Huh?!");
+            return i;
 
         }
 
