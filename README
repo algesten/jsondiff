@@ -14,7 +14,7 @@ var orig = {
 var patch = {
   a: 42,                      // replace a
   "b[+1]": "example",         // insert into array b
-  "~c": { "for": "example" }  // merge into object c
+  "~c": { "for": "example" }  // merge into object c (It's a TILDE)
 };
 
 var changed = patch(orig, patch);
@@ -24,7 +24,7 @@ would yield a changed object as:
 {
   a: 42,
   b: ["an", "example", "array"],
-  c: {"an", "object", "for", "example" }
+  c: {"an": "object", "for": "example" }
 }
 
 Syntax:
