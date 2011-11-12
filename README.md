@@ -30,10 +30,10 @@ would yield a changed object as:
 
 ### Syntax ###
 
-* `~` (tilde) is an object merge. I.e. {a:1} merged with {b:2} would yield {a:1,b:2}
+* `~` (tilde) is an object merge. I.e. `{a:1}` merged with `{b:2}` would yield `{a:1,b:2}`
 * `-` (hyphen-minus) is a removal.
-* `[n]` is an array index i.e. a[4] means element 4 in array named 'a'.
-* `[+n]` means an array insertion. i.e a[+4] means insert an item at position 4.
+* `[n]` is an array index i.e. `a[4]` means element 4 in array named `a`.
+* `[+n]` means an array insertion. i.e `a[+4]` means insert an item at position 4.
 
 ### Further definitions ###
 
