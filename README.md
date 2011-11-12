@@ -1,5 +1,5 @@
 Structural JSON diff/patch tool
--------------------------------
+===============================
 
 The patches are json themselves where the object memeber keys follows
 a certain syntax.
