@@ -400,6 +400,9 @@ public class JsonPatch {
         @Override
         public int compareTo(Instruction o) {
 
+            // 20 sp no oper
+            // 2d -
+            // 7e ~
             int i = (int) o.oper - (int) oper;
 
             if (i == 0) {
