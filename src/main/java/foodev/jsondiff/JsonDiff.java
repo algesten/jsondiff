@@ -46,6 +46,20 @@ import foodev.jsondiff.incava.IncavaEntry;
  * </code>
  * </pre>
  * 
+ * <p>
+ * When diffing, the object is expanded to a structure like this: <code><pre>Example: {a:[{b:1,c:2},{d:3}]}
+ * </pre></code> Becomes a list of:
+ * <ol>
+ * <li>Leaf: obj
+ * <li>Leaf: array 0
+ * <li>Leaf: obj
+ * <li>Leaf: b: 1
+ * <li>Leaf: c: 2
+ * <li>Leaf: array 1
+ * <li>Leaf: obj
+ * <li>Leaf: d: 3
+ * </ol>
+ * 
  * @author Martin Algesten
  * 
  */
@@ -79,16 +93,18 @@ public class JsonDiff {
         ArrayList<Leaf> fromLeaves = new ArrayList<Leaf>();
         ArrayList<Leaf> toLeaves = new ArrayList<Leaf>();
 
-        findLeaves(fromRoot, from, fromLeaves, false);
-        findLeaves(toRoot, to, toLeaves, false);
+        findLeaves(fromRoot, from, fromLeaves);
+        findLeaves(toRoot, to, toLeaves);
 
         IncavaDiff<Leaf> idiff = new IncavaDiff<Leaf>(fromLeaves, toLeaves);
 
-        List<IncavaEntry> ipatch = idiff.diff();
+        List<IncavaEntry> diff = idiff.diff();
+
+        adjustArrayMutations(diff, fromLeaves, toLeaves);
 
         JsonObject patch = new JsonObject();
 
-        buildPatch(patch, ipatch, fromLeaves, toLeaves);
+        buildPatch(patch, diff, fromLeaves, toLeaves);
 
         return patch;
 
@@ -101,7 +117,7 @@ public class JsonDiff {
         // quick lookups to check whether a key/index has been added or deleted
         HashSet<Integer> deletions = new HashSet<Integer>();
         HashSet<Integer> additions = new HashSet<Integer>();
-        
+
         // holds added instructions to check for double additions (where a deep addition is
         // superfluous since a parent has been added).
         HashSet<Integer> added = new HashSet<Integer>();
@@ -278,9 +294,9 @@ public class JsonDiff {
     }
 
 
-    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves, boolean useValueHash) {
+    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves) {
 
-        leaves.add(new Leaf(parent, el, useValueHash));
+        leaves.add(new Leaf(parent, el));
 
         if (el.isJsonObject()) {
 
@@ -290,7 +306,7 @@ public class JsonDiff {
             for (Entry<String, JsonElement> e : memb) {
 
                 ObjNode newParent = new ObjNode(parent, e.getKey());
-                findLeaves(newParent, e.getValue(), leaves, false);
+                findLeaves(newParent, e.getValue(), leaves);
 
             }
 
@@ -300,13 +316,72 @@ public class JsonDiff {
 
             for (int i = 0, n = arr.size(); i < n; i++) {
 
-                ArrNode newParent = new ArrNode(parent, i);
-                findLeaves(newParent, arr.get(i), leaves, true);
+                ArrNode newParent = new ArrNode(parent, el, i);
+                findLeaves(newParent, arr.get(i), leaves);
 
             }
 
         }
 
+
+    }
+
+
+    // the diff algorithm may sometimes make a strange diff for arrays of objects.
+    // from: {a:[{b:2},{c:3}]}
+    // to: {a:[{c:3}]]
+    // ends up with deleting
+    // ~a[0]: {-b:0}
+    // -a[1]: 0 // WRONG
+    // this is because the intermediate array nodes are thought of as equal
+    // and the first for a0 is considered "same" in both from/to which means
+    // the patch is not deleting the correct one. Same problem goes for additions.
+    private static void adjustArrayMutations(List<IncavaEntry> diff,
+            ArrayList<Leaf> fromLeaves, ArrayList<Leaf> toLeaves) {
+
+        for (int i = 0, n = diff.size(); i < n; i++) {
+
+            IncavaEntry ent = diff.get(i);
+
+            if (ent.getDeletedStart() > 0 && ent.getDeletedEnd() > 0) {
+
+                Leaf first = fromLeaves.get(ent.getDeletedStart());
+                Leaf beforeFirst = fromLeaves.get(ent.getDeletedStart() - 1);
+                Leaf last = fromLeaves.get(ent.getDeletedEnd());
+
+                if (beforeFirst.parent instanceof ArrNode && first.parent instanceof ObjNode &&
+                        last.parent instanceof ArrNode
+                        && ((ArrNode) beforeFirst.parent).el == ((ArrNode) last.parent).el) {
+
+                    ent = new IncavaEntry(ent.getDeletedStart() - 1, ent.getDeletedEnd() - 1,
+                            ent.getAddedStart(), ent.getAddedEnd());
+
+                    diff.set(i, ent);
+
+                }
+
+            }
+
+            if (ent.getAddedStart() > 0 && ent.getAddedEnd() > 0) {
+
+                Leaf first = toLeaves.get(ent.getAddedStart());
+                Leaf beforeFirst = toLeaves.get(ent.getAddedStart() - 1);
+                Leaf last = toLeaves.get(ent.getAddedEnd());
+
+                if (beforeFirst.parent instanceof ArrNode && first.parent instanceof ObjNode &&
+                        last.parent instanceof ArrNode
+                        && ((ArrNode) beforeFirst.parent).el == ((ArrNode) last.parent).el) {
+
+                    ent = new IncavaEntry(ent.getDeletedStart(), ent.getDeletedEnd(),
+                            ent.getAddedStart() - 1, ent.getAddedEnd() - 1);
+
+                    diff.set(i, ent);
+
+                }
+
+            }
+
+        }
 
     }
 
@@ -326,15 +401,13 @@ public class JsonDiff {
 
         final Node parent;
         final JsonElement val;
-        final boolean useValueHash;
         Integer hash;
         ArrayList<Node> path;
 
 
-        Leaf(Node parent, JsonElement val, boolean useValueHash) {
+        Leaf(Node parent, JsonElement val) {
             this.parent = parent;
             this.val = val;
-            this.useValueHash = useValueHash;
         }
 
 
@@ -387,7 +460,7 @@ public class JsonDiff {
                 return hash;
             }
             int i = parent.hashCode();
-            i = i * 31 + (useValueHash || val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
+            i = i * 31 + (val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
             hash = i;
             return hash;
         }
@@ -475,13 +548,15 @@ public class JsonDiff {
 
     private static class ArrNode extends Node {
 
-        int index;
+        final JsonElement el;
+        final int index;
 
         ArrNode subindex;
 
 
-        ArrNode(Node parent, int index) {
+        ArrNode(Node parent, JsonElement el, int index) {
             super(parent);
+            this.el = el;
             this.index = index;
         }
 
