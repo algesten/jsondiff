@@ -121,7 +121,7 @@ public class JsonDiff {
 
                 // if something is in added, it's a change, we don't
                 // do delete + add for change, just add
-                if (!added.contains(prev.parent.doHash(true))) {
+                if (!selfOrAncestor(added, prev.parent)) {
 
                     // not array, just remove
                     addInstruction(patch, prev, true, false);
@@ -136,7 +136,7 @@ public class JsonDiff {
 
                         // ignore since the whole parent is deleted/changed.
 
-                    } else if (!added.contains(cur.parent.doHash(true))) {
+                    } else if (!selfOrAncestor(added, cur.parent)) {
 
                         // add remove instruction
                         addInstruction(patch, cur, true, false);
@@ -154,7 +154,7 @@ public class JsonDiff {
                 int i = d.getAddedStart();
 
                 Leaf prev = to.get(i);
-                addInstruction(patch, prev, deleted.contains(prev.parent.doHash(true)), true);
+                addInstruction(patch, prev, selfOrAncestor(deleted, prev.parent), true);
 
                 for (i = i + 1; i <= d.getAddedEnd(); i++) {
 
@@ -163,7 +163,7 @@ public class JsonDiff {
                     if (cur.hasAncestor(prev.parent)) {
                         // ignore since the whole parent has been added.
                     } else {
-                        addInstruction(patch, cur, deleted.contains(cur.parent.doHash(true)), true);
+                        addInstruction(patch, cur, selfOrAncestor(deleted, cur.parent), true);
                         prev = cur;
                     }
 
@@ -172,6 +172,21 @@ public class JsonDiff {
             }
 
         }
+
+    }
+
+
+    private static boolean selfOrAncestor(HashSet<Integer> added, Node node) {
+
+        if (node == null) {
+            return false;
+        }
+
+        if (added.contains(node.doHash(true))) {
+            return true;
+        }
+
+        return selfOrAncestor(added, node.parent);
 
     }
 
