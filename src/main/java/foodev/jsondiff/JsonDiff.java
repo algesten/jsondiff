@@ -101,6 +101,7 @@ public class JsonDiff {
         // quick lookups to check whether a key/index has been added or deleted
         HashSet<Integer> deletions = new HashSet<Integer>();
         HashSet<Integer> additions = new HashSet<Integer>();
+        HashSet<Integer> added = new HashSet<Integer>();
 
         for (IncavaEntry d : diff) {
             for (int i = d.getDeletedStart(), n = d.getDeletedEnd(); i <= n; i++) {
@@ -154,7 +155,10 @@ public class JsonDiff {
                 int i = d.getAddedStart();
 
                 Leaf prev = to.get(i);
-                addInstruction(patch, prev, selfOrAncestor(deletions, prev.parent), true);
+                if (!selfOrAncestor(added, prev.parent)) {
+                    addInstruction(patch, prev, selfOrAncestor(deletions, prev.parent), true);
+                    added.add(prev.parent.doHash(true));
+                }
 
                 for (i = i + 1; i <= d.getAddedEnd(); i++) {
 
@@ -162,8 +166,9 @@ public class JsonDiff {
 
                     if (cur.hasAncestor(prev.parent)) {
                         // ignore since the whole parent has been added.
-                    } else {
+                    } else if (!selfOrAncestor(added, cur.parent)) {
                         addInstruction(patch, cur, selfOrAncestor(deletions, cur.parent), true);
+                        added.add(cur.parent.doHash(true));
                         prev = cur;
                     }
 
