@@ -359,7 +359,7 @@ public class JsonDiffTest {
     public void testArrayRemoveInMulti() {
 
         String d = JsonDiff.diff("{a:[1,[2,3]]}", "{a:[1,[3]]}");
-        Assert.assertEquals("{\"-a[1][0]\":0}", d);
+        Assert.assertEquals("{\"a[1]\":[3]}", d);
 
         String p = JsonPatch.apply("{a:[1,[2,3]]}", d);
         Assert.assertEquals("{\"a\":[1,[3]]}", p);
@@ -371,7 +371,7 @@ public class JsonDiffTest {
     public void testArrayRemoveLastInMulti() {
 
         String d = JsonDiff.diff("{a:[1,[2,3]]}", "{a:[1,[2]]}");
-        Assert.assertEquals("{\"-a[1][1]\":0}", d);
+        Assert.assertEquals("{\"a[1]\":[2]}", d);
 
         String p = JsonPatch.apply("{a:[1,[2,3]]}", d);
         Assert.assertEquals("{\"a\":[1,[2]]}", p);
@@ -383,7 +383,7 @@ public class JsonDiffTest {
     public void testArrayInsertInMulti() {
 
         String d = JsonDiff.diff("{a:[1,[2,4]]}", "{a:[1,[2,3,4]]}");
-        Assert.assertEquals("{\"a[1][+1]\":3}", d);
+        Assert.assertEquals("{\"a[1]\":[2,3,4]}", d);
 
         String p = JsonPatch.apply("{a:[1,[2,4]]}", d);
         Assert.assertEquals("{\"a\":[1,[2,3,4]]}", p);
@@ -407,7 +407,7 @@ public class JsonDiffTest {
     public void testMergeObjectInArray() {
 
         String d = JsonDiff.diff("{a:[1,{}]}", "{a:[1,{b:2}]}");
-        Assert.assertEquals("{\"~a[1]\":{\"b\":2}}", d);
+        Assert.assertEquals("{\"a[1]\":{\"b\":2}}", d);
 
         String p = JsonPatch.apply("{a:[1,{}]}", d);
         Assert.assertEquals("{\"a\":[1,{\"b\":2}]}", p);
@@ -419,7 +419,6 @@ public class JsonDiffTest {
     public void testInsertInArrayInObjectInArray() {
 
         String d = JsonDiff.diff("{a:[1,{b:[]}]}", "{a:[1,{b:[2]}]}");
-        Assert.assertEquals("{\"~a[1]\":{\"b[+0]\":2}}", d);
 
         String p = JsonPatch.apply("{a:[1,{b:[]}]}", d);
         Assert.assertEquals("{\"a\":[1,{\"b\":[2]}]}", p);
@@ -431,7 +430,7 @@ public class JsonDiffTest {
     public void testRemoveFromArrayInObjectInArray() {
 
         String d = JsonDiff.diff("{a:[1,{b:[2,3]}]}", "{a:[1,{b:[]}]}");
-        Assert.assertEquals("{\"~a[1]\":{\"-b[0]\":0,\"-b[1]\":0}}", d);
+        Assert.assertEquals("{\"a[1]\":{\"b\":[]}}", d);
 
         String p = JsonPatch.apply("{a:[1,{b:[2,3]}]}", d);
         Assert.assertEquals("{\"a\":[1,{\"b\":[]}]}", p);
@@ -452,6 +451,18 @@ public class JsonDiffTest {
 
 
     @Test
+    public void testArrToNumeric() {
+
+        String d = JsonDiff.diff("{a: [1,2]}", "{a: 1}");
+        Assert.assertEquals("{\"a\":1}", d);
+
+        String p = JsonPatch.apply("{a: [1,2]}", d);
+        Assert.assertEquals("{\"a\":1}", p);
+
+    }
+
+
+    @Test
     public void testMix() {
 
         String d = JsonDiff.diff("{a: [1,2], b: { foo: 'b'}, c: 42}", "{a: 1, b: {foo: 'b', bar: 42}, c: 45}");
@@ -460,6 +471,67 @@ public class JsonDiffTest {
         String p = JsonPatch.apply("{a: [1,2], b: { foo: 'b'}, c: 42}", d);
         Assert.assertEquals("{\"a\":1,\"b\":{\"foo\":\"b\",\"bar\":42},\"c\":45}", p);
 
+    }
+
+
+    @Test
+    public void testArrayObjectsChange() {
+        String from = "{a:[{b:1}]}";
+        String to = "{\"a\":[{\"c\":1}]}";
+        String diff = "{\"a[0]\":{\"c\":1}}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals(diff, d);
+
+        String p = JsonPatch.apply(from, diff);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    @Test
+    public void testArrayStringsRotateLeft() {
+        String from = "{\"a\":[\"s1\",\"s2\",\"s3\"]}";
+        String to = "{\"a\":[\"s2\",\"s3\",\"s4\"]}";
+
+        String diff = JsonDiff.diff(from, to);
+        Assert.assertEquals("{\"-a[0]\":0,\"a[+2]\":\"s4\"}", diff);
+
+        String p = JsonPatch.apply(from, diff);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    // Bug #1 thanks to deverton 
+    @Test
+    public void testArrayObjectsRotateLeft() {
+        String from = "{\"a\":[{\"b\":1},{\"c\":2},{\"d\":3}]}";
+        String to = "{\"a\":[{\"c\":2},{\"d\":3},{\"e\":4}]}";
+        String diff = "{\"-a[0]\":0,\"a[+2]\":{\"e\":4}}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals(diff, d);
+
+        String p = JsonPatch.apply(from, diff);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    // Bug #1, thanks to deverton 
+    @Test
+    public void testArrayObjectsRotateRight() {
+
+        String from = "{\"a\":[{\"c\":2},{\"d\":3},{\"e\":4}]}";
+        String to = "{\"a\":[{\"b\":1},{\"c\":2},{\"d\":3}]}";
+        String diff = "{\"a[+0]\":{\"b\":1},\"-a[2]\":0}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals(diff, d);
+
+        String p = JsonPatch.apply(from, diff);
+        Assert.assertEquals(to, p);
     }
 
 }
