@@ -101,6 +101,9 @@ public class JsonDiff {
         // quick lookups to check whether a key/index has been added or deleted
         HashSet<Integer> deletions = new HashSet<Integer>();
         HashSet<Integer> additions = new HashSet<Integer>();
+        
+        // holds added instructions to check for double additions (where a deep addition is
+        // superfluous since a parent has been added).
         HashSet<Integer> added = new HashSet<Integer>();
 
         for (IncavaEntry d : diff) {
