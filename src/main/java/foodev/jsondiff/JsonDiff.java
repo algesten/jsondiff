@@ -79,8 +79,8 @@ public class JsonDiff {
         ArrayList<Leaf> fromLeaves = new ArrayList<Leaf>();
         ArrayList<Leaf> toLeaves = new ArrayList<Leaf>();
 
-        findLeaves(fromRoot, from, fromLeaves);
-        findLeaves(toRoot, to, toLeaves);
+        findLeaves(fromRoot, from, fromLeaves, false);
+        findLeaves(toRoot, to, toLeaves, false);
 
         IncavaDiff<Leaf> idiff = new IncavaDiff<Leaf>(fromLeaves, toLeaves);
 
@@ -270,9 +270,9 @@ public class JsonDiff {
     }
 
 
-    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves) {
+    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves, boolean useValueHash) {
 
-        leaves.add(new Leaf(parent, el));
+        leaves.add(new Leaf(parent, el, useValueHash));
 
         if (el.isJsonObject()) {
 
@@ -282,7 +282,7 @@ public class JsonDiff {
             for (Entry<String, JsonElement> e : memb) {
 
                 ObjNode newParent = new ObjNode(parent, e.getKey());
-                findLeaves(newParent, e.getValue(), leaves);
+                findLeaves(newParent, e.getValue(), leaves, false);
 
             }
 
@@ -293,7 +293,7 @@ public class JsonDiff {
             for (int i = 0, n = arr.size(); i < n; i++) {
 
                 ArrNode newParent = new ArrNode(parent, i);
-                findLeaves(newParent, arr.get(i), leaves);
+                findLeaves(newParent, arr.get(i), leaves, true);
 
             }
 
@@ -316,15 +316,17 @@ public class JsonDiff {
 
     private static class Leaf implements Comparable<Leaf> {
 
-        Node parent;
-        JsonElement val;
+        final Node parent;
+        final JsonElement val;
+        final boolean useValueHash;
         Integer hash;
         ArrayList<Node> path;
 
 
-        Leaf(Node parent, JsonElement val) {
+        Leaf(Node parent, JsonElement val, boolean useValueHash) {
             this.parent = parent;
             this.val = val;
+            this.useValueHash = useValueHash;
         }
 
 
@@ -377,7 +379,7 @@ public class JsonDiff {
                 return hash;
             }
             int i = parent.hashCode();
-            i = i * 31 + (val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
+            i = i * 31 + (useValueHash || val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
             hash = i;
             return hash;
         }
