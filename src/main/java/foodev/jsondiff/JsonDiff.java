@@ -99,15 +99,15 @@ public class JsonDiff {
             ArrayList<Leaf> from, ArrayList<Leaf> to) {
 
         // quick lookups to check whether a key/index has been added or deleted
-        HashSet<Integer> deleted = new HashSet<Integer>();
-        HashSet<Integer> added = new HashSet<Integer>();
+        HashSet<Integer> deletions = new HashSet<Integer>();
+        HashSet<Integer> additions = new HashSet<Integer>();
 
         for (IncavaEntry d : diff) {
             for (int i = d.getDeletedStart(), n = d.getDeletedEnd(); i <= n; i++) {
-                deleted.add(from.get(i).parent.doHash(true));
+                deletions.add(from.get(i).parent.doHash(true));
             }
             for (int i = d.getAddedStart(), n = d.getAddedEnd(); i <= n; i++) {
-                added.add(to.get(i).parent.doHash(true));
+                additions.add(to.get(i).parent.doHash(true));
             }
         }
 
@@ -121,7 +121,7 @@ public class JsonDiff {
 
                 // if something is in added, it's a change, we don't
                 // do delete + add for change, just add
-                if (!selfOrAncestor(added, prev.parent)) {
+                if (!selfOrAncestor(additions, prev.parent)) {
 
                     // not array, just remove
                     addInstruction(patch, prev, true, false);
@@ -136,7 +136,7 @@ public class JsonDiff {
 
                         // ignore since the whole parent is deleted/changed.
 
-                    } else if (!selfOrAncestor(added, cur.parent)) {
+                    } else if (!selfOrAncestor(additions, cur.parent)) {
 
                         // add remove instruction
                         addInstruction(patch, cur, true, false);
@@ -154,7 +154,7 @@ public class JsonDiff {
                 int i = d.getAddedStart();
 
                 Leaf prev = to.get(i);
-                addInstruction(patch, prev, selfOrAncestor(deleted, prev.parent), true);
+                addInstruction(patch, prev, selfOrAncestor(deletions, prev.parent), true);
 
                 for (i = i + 1; i <= d.getAddedEnd(); i++) {
 
@@ -163,7 +163,7 @@ public class JsonDiff {
                     if (cur.hasAncestor(prev.parent)) {
                         // ignore since the whole parent has been added.
                     } else {
-                        addInstruction(patch, cur, selfOrAncestor(deleted, cur.parent), true);
+                        addInstruction(patch, cur, selfOrAncestor(deletions, cur.parent), true);
                         prev = cur;
                     }
 
@@ -176,17 +176,17 @@ public class JsonDiff {
     }
 
 
-    private static boolean selfOrAncestor(HashSet<Integer> added, Node node) {
+    private static boolean selfOrAncestor(HashSet<Integer> set, Node node) {
 
         if (node == null) {
             return false;
         }
 
-        if (added.contains(node.doHash(true))) {
+        if (set.contains(node.doHash(true))) {
             return true;
         }
 
-        return selfOrAncestor(added, node.parent);
+        return selfOrAncestor(set, node.parent);
 
     }
 
@@ -399,7 +399,7 @@ public class JsonDiff {
 
         @Override
         public String toString() {
-            return "LEAF<" + val + "#" + hashCode() + ">";
+            return "LEAF<" + val + "#" + hashCode() + ">\n";
         }
 
     }
