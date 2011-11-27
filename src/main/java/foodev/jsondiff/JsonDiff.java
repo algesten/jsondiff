@@ -382,7 +382,7 @@ public class JsonDiff {
 
         @Override
         public String toString() {
-            return toPath().toString() + " " + hashCode();
+            return "LEAF<" + val + "#" + hashCode() + ">";
         }
 
     }
