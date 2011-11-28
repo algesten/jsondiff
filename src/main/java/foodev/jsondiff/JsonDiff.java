@@ -93,8 +93,8 @@ public class JsonDiff {
         ArrayList<Leaf> fromLeaves = new ArrayList<Leaf>();
         ArrayList<Leaf> toLeaves = new ArrayList<Leaf>();
 
-        findLeaves(fromRoot, from, fromLeaves);
-        findLeaves(toRoot, to, toLeaves);
+        findLeaves(fromRoot, from, fromLeaves, null);
+        findLeaves(toRoot, to, toLeaves, null);
 
         IncavaDiff<Leaf> idiff = new IncavaDiff<Leaf>(fromLeaves, toLeaves);
 
@@ -294,7 +294,7 @@ public class JsonDiff {
     }
 
 
-    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves) {
+    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves, Integer index) {
 
         leaves.add(new Leaf(parent, el));
 
@@ -305,8 +305,8 @@ public class JsonDiff {
 
             for (Entry<String, JsonElement> e : memb) {
 
-                ObjNode newParent = new ObjNode(parent, e.getKey());
-                findLeaves(newParent, e.getValue(), leaves);
+                ObjNode newParent = new ObjNode(parent, e.getKey(), index);
+                findLeaves(newParent, e.getValue(), leaves, index);
 
             }
 
@@ -317,7 +317,7 @@ public class JsonDiff {
             for (int i = 0, n = arr.size(); i < n; i++) {
 
                 ArrNode newParent = new ArrNode(parent, el, i);
-                findLeaves(newParent, arr.get(i), leaves);
+                findLeaves(newParent, arr.get(i), leaves, i);
 
             }
 
@@ -523,10 +523,13 @@ public class JsonDiff {
 
         ArrNode subindex;
 
+        Integer index;
 
-        ObjNode(Node parent, String key) {
+
+        ObjNode(Node parent, String key, Integer index) {
             super(parent);
             this.key = key;
+            this.index = index;
         }
 
 
@@ -534,6 +537,9 @@ public class JsonDiff {
         protected int doHash(boolean indexed) {
             int i = parent.hashCode();
             i = i * 31 + key.hashCode();
+            if (index != null) {
+                i = i * 31 + index.hashCode();
+            }
             return i;
         }
 

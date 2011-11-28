@@ -508,7 +508,7 @@ public class JsonDiffTest {
     public void testArrayObjectsRotateLeft() {
         String from = "{\"a\":[{\"b\":1},{\"c\":2},{\"d\":3}]}";
         String to = "{\"a\":[{\"c\":2},{\"d\":3},{\"e\":4}]}";
-        String diff = "{\"-a[0]\":0,\"a[+2]\":{\"e\":4}}";
+        String diff = "{\"~a[0]\":{\"-b\":0,\"c\":2},\"~a[1]\":{\"-c\":0,\"d\":3},\"~a[2]\":{\"-d\":0,\"e\":4}}";
 
         String d = JsonDiff.diff(from, to);
         Assert.assertEquals(diff, d);
@@ -525,7 +525,7 @@ public class JsonDiffTest {
 
         String from = "{\"a\":[{\"c\":2},{\"d\":3},{\"e\":4}]}";
         String to = "{\"a\":[{\"b\":1},{\"c\":2},{\"d\":3}]}";
-        String diff = "{\"a[+0]\":{\"b\":1},\"-a[2]\":0}";
+        String diff = "{\"~a[0]\":{\"-c\":0,\"b\":1},\"~a[1]\":{\"-d\":0,\"c\":2},\"~a[2]\":{\"-e\":0,\"d\":3}}";
 
         String d = JsonDiff.diff(from, to);
         Assert.assertEquals(diff, d);
