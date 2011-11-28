@@ -93,8 +93,8 @@ public class JsonDiff {
         ArrayList<Leaf> fromLeaves = new ArrayList<Leaf>();
         ArrayList<Leaf> toLeaves = new ArrayList<Leaf>();
 
-        findLeaves(fromRoot, from, fromLeaves, null);
-        findLeaves(toRoot, to, toLeaves, null);
+        findLeaves(fromRoot, from, fromLeaves);
+        findLeaves(toRoot, to, toLeaves);
 
         IncavaDiff<Leaf> idiff = new IncavaDiff<Leaf>(fromLeaves, toLeaves);
 
@@ -115,11 +115,14 @@ public class JsonDiff {
             ArrayList<Leaf> from, ArrayList<Leaf> to) {
 
         // quick lookups to check whether a key/index has been added or deleted
+        // these hash codes are "index position aware" which means there's no risk
+        // of confusing position independent array positions.
         HashSet<Integer> deletions = new HashSet<Integer>();
         HashSet<Integer> additions = new HashSet<Integer>();
 
         // holds added instructions to check for double additions (where a deep addition is
-        // superfluous since a parent has been added).
+        // superfluous since a parent has been added). This also holds hash codes where
+        // index is used.
         HashSet<Integer> added = new HashSet<Integer>();
 
         for (IncavaEntry d : diff) {
@@ -294,7 +297,7 @@ public class JsonDiff {
     }
 
 
-    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves, Integer index) {
+    private static void findLeaves(Node parent, JsonElement el, List<Leaf> leaves) {
 
         leaves.add(new Leaf(parent, el));
 
@@ -305,8 +308,8 @@ public class JsonDiff {
 
             for (Entry<String, JsonElement> e : memb) {
 
-                ObjNode newParent = new ObjNode(parent, e.getKey(), index);
-                findLeaves(newParent, e.getValue(), leaves, index);
+                ObjNode newParent = new ObjNode(parent, e.getKey());
+                findLeaves(newParent, e.getValue(), leaves);
 
             }
 
@@ -317,7 +320,7 @@ public class JsonDiff {
             for (int i = 0, n = arr.size(); i < n; i++) {
 
                 ArrNode newParent = new ArrNode(parent, el, i);
-                findLeaves(newParent, arr.get(i), leaves, i);
+                findLeaves(newParent, arr.get(i), leaves);
 
             }
 
@@ -488,7 +491,7 @@ public class JsonDiff {
 
     private static abstract class Node {
 
-        Node parent;
+        final Node parent;
         int hash = -1;
 
 
@@ -519,27 +522,21 @@ public class JsonDiff {
 
     private static class ObjNode extends Node {
 
-        String key;
+        final String key;
 
         ArrNode subindex;
 
-        Integer index;
 
-
-        ObjNode(Node parent, String key, Integer index) {
+        ObjNode(Node parent, String key) {
             super(parent);
             this.key = key;
-            this.index = index;
         }
 
 
         @Override
         protected int doHash(boolean indexed) {
-            int i = parent.hashCode();
+            int i = parent.doHash(indexed);
             i = i * 31 + key.hashCode();
-            if (index != null) {
-                i = i * 31 + index.hashCode();
-            }
             return i;
         }
 
@@ -569,7 +566,7 @@ public class JsonDiff {
 
         @Override
         protected int doHash(boolean indexed) {
-            int i = parent.hashCode();
+            int i = parent.doHash(indexed);
             i = i * 31 + ArrNode.class.hashCode();
             if (indexed) {
                 i = i * 31 + index;
