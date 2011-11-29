@@ -4,8 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSyntaxException;
 
 import foodev.jsondiff.jsonwrap.JsonElement;
+import foodev.jsondiff.jsonwrap.JsonWrapperException;
 import foodev.jsondiff.jsonwrap.Wrapper;
 
 
@@ -31,7 +33,11 @@ public class GsonWrapper implements Wrapper {
 
     @Override
     public JsonElement parse(String json) {
-        return wrap(JSON.parse(json));
+        try {
+            return wrap(JSON.parse(json));
+        } catch (JsonSyntaxException jse) {
+            throw new JsonWrapperException("Failed to parse JSON", jse);
+        }
     }
 
 
