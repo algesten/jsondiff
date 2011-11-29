@@ -9,10 +9,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import foodev.jsondiff.jsonwrap.JsonArray;
+import foodev.jsondiff.jsonwrap.JsonElement;
+import foodev.jsondiff.jsonwrap.JsonObject;
+import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
 
 import foodev.jsondiff.incava.IncavaDiff;
 import foodev.jsondiff.incava.IncavaEntry;
@@ -65,27 +65,41 @@ import foodev.jsondiff.incava.IncavaEntry;
  */
 public class JsonDiff {
 
-    final static JsonParser JSON = new JsonParser();
-
 
     public static String diff(String from, String to) {
 
-        JsonElement fromEl = JSON.parse(from);
-        JsonElement toEl = JSON.parse(to);
+        // by providing null as hint we default to GSON.
+        JsonElement fromEl = JsonWrapperFactory.parse(from, null);
+        JsonElement toEl = JsonWrapperFactory.parse(to, null);
 
-        if (!fromEl.isJsonObject()) {
-            throw new IllegalArgumentException("From can't be parsed to json object");
-        }
-        if (!toEl.isJsonObject()) {
-            throw new IllegalArgumentException("To can't be parsed to json object");
-        }
-
-        return diff((JsonObject) fromEl, (JsonObject) toEl).toString();
+        return diff(fromEl, toEl).toString();
 
     }
 
 
-    public static JsonObject diff(JsonObject from, JsonObject to) {
+    public static Object diff(Object from, Object to) {
+
+        JsonElement fromEl = JsonWrapperFactory.wrap(from);
+        JsonElement toEl = JsonWrapperFactory.wrap(to);
+
+        JsonObject diff = diff(fromEl, toEl);
+
+        return diff.unwrap();
+    }
+
+
+    public static JsonObject diff(JsonElement fromEl, JsonElement toEl) {
+
+        if (!fromEl.isJsonObject()) {
+            throw new IllegalArgumentException("From is not a json object");
+        }
+        if (!toEl.isJsonObject()) {
+            throw new IllegalArgumentException("To is not a json object");
+        }
+
+        JsonObject from = (JsonObject) fromEl;
+        JsonObject to = (JsonObject) toEl;
+
 
         Root fromRoot = new Root();
         Root toRoot = new Root();
@@ -102,7 +116,7 @@ public class JsonDiff {
 
         adjustArrayMutations(diff, fromLeaves, toLeaves);
 
-        JsonObject patch = new JsonObject();
+        JsonObject patch = JsonWrapperFactory.createJsonObject(from);
 
         buildPatch(patch, diff, fromLeaves, toLeaves);
 
@@ -237,7 +251,7 @@ public class JsonDiff {
             if (cur.has(key)) {
                 tmp = cur.getAsJsonObject(key);
             } else {
-                tmp = new JsonObject();
+                tmp = JsonWrapperFactory.createJsonObject(patch);
                 cur.add(key, tmp);
             }
 
