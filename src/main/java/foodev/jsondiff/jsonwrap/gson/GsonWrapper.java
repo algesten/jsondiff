@@ -43,11 +43,7 @@ public class GsonWrapper implements Wrapper {
 
     @Override
     public JsonElement wrap(Object o) {
-        if (o instanceof JsonElement) {
-            return (JsonElement) o;
-        } else {
-            return wrap((com.google.gson.JsonElement) o);
-        }
+        return wrap((com.google.gson.JsonElement) o);
     }
 
 

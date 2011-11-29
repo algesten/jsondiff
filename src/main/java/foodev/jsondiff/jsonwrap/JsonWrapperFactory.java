@@ -25,7 +25,11 @@ public class JsonWrapperFactory {
 
 
     public static JsonElement wrap(Object obj) {
-        return selectWrapper(obj).wrap(obj);
+        if (obj instanceof JsonElement) {
+            return (JsonElement) obj;
+        } else {
+            return selectWrapper(obj).wrap(obj);
+        }
     }
 
 
