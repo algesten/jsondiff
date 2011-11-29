@@ -49,7 +49,7 @@ public class JacksonWrapper implements Wrapper {
 
     @Override
     public boolean accepts(Object o) {
-        return o == null || o instanceof JacksonJsonElement || o instanceof com.google.gson.JsonElement;
+        return o == null || o instanceof JacksonJsonElement || o instanceof org.codehaus.jackson.JsonNode;
     }
 
 
