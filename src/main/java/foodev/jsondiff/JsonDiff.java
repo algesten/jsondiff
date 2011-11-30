@@ -259,7 +259,7 @@ public class JsonDiff {
 
             JzonObject tmp;
             if (cur.has(key)) {
-                tmp = cur.getAsJsonObject(key);
+                tmp = (JzonObject)cur.get(key);
             } else {
                 tmp = JsonWrapperFactory.createJsonObject(patch);
                 cur.add(key, tmp);

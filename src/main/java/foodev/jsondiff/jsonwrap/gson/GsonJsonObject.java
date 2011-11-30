@@ -30,14 +30,8 @@ public class GsonJsonObject extends GsonJsonElement implements JzonObject {
 
 
     @Override
-    public JzonObject getAsJsonObject(String key) {
-        return (JzonObject) GsonWrapper.wrap(wrapped.getAsJsonObject(key));
-    }
-
-
-    @Override
-    public void add(String key, JzonElement tmp) {
-        wrapped.add(key, (JsonElement)tmp.unwrap());
+    public void add(String key, JzonElement prop) {
+        wrapped.add(key, (JsonElement) prop.unwrap());
     }
 
 

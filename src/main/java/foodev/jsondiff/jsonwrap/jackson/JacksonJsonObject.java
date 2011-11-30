@@ -30,14 +30,8 @@ public class JacksonJsonObject extends JacksonJsonElement implements JzonObject 
 
 
     @Override
-    public JzonObject getAsJsonObject(String key) {
-        return (JzonObject) JacksonWrapper.wrap(wrapped.get(key));
-    }
-
-
-    @Override
-    public void add(String key, JzonElement tmp) {
-        wrapped.put(key, (JsonNode) tmp.unwrap());
+    public void add(String key, JzonElement prop) {
+        wrapped.put(key, (JsonNode) prop.unwrap());
     }
 
 
@@ -51,11 +45,11 @@ public class JacksonJsonObject extends JacksonJsonElement implements JzonObject 
     public Collection<? extends Entry<String, JzonElement>> entrySet() {
 
         HashSet<Entry<String, JzonElement>> jset = new HashSet<Entry<String, JzonElement>>();
-        
+
         for (Iterator<Entry<String, JsonNode>> i = wrapped.getFields(); i.hasNext();) {
-            
+
             final Entry<String, JsonNode> e = i.next();
-            
+
             final JzonElement el = JacksonWrapper.wrap(e.getValue());
 
             jset.add(new Entry<String, JzonElement>() {

@@ -10,10 +10,7 @@ public interface JzonObject extends JzonElement {
     boolean has(String key);
 
 
-    JzonObject getAsJsonObject(String key);
-
-
-    void add(String key, JzonElement tmp);
+    void add(String key, JzonElement prop);
 
 
     void addProperty(String key, int prop);
