@@ -43,7 +43,7 @@ public class JsonWrapperFactory {
     private static Wrapper selectWrapper(Object hint) {
         if (gsonWrapper != null && (hint == null || gsonWrapper.accepts(hint))) {
             return gsonWrapper;
-        } else if (jacksonWrapper != null && jacksonWrapper.accepts(hint)) {
+        } else if (jacksonWrapper != null && (hint == null || jacksonWrapper.accepts(hint))) {
             return jacksonWrapper;
         } else {
             throw new IllegalStateException("No json wrapper accepts: " + (hint == null ? hint : hint.getClass().getName()));
