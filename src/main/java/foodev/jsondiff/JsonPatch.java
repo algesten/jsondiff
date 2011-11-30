@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.Map.Entry;
 import java.util.TreeSet;
 
+import org.codehaus.jackson.node.ObjectNode;
+
+import com.google.gson.JsonObject;
+
+import foodev.jsondiff.jsonwrap.JsonWrapperException;
 import foodev.jsondiff.jsonwrap.JzonArray;
 import foodev.jsondiff.jsonwrap.JzonElement;
 import foodev.jsondiff.jsonwrap.JzonObject;
@@ -62,6 +67,20 @@ public class JsonPatch {
     }
 
 
+    /**
+     * Modifies the given original JSON object using the instructions provided and returns the result. Each argument is
+     * expected to be a JSON object {}.
+     * 
+     * @param orig
+     *            The original JSON object to modify.
+     * @param patch
+     *            The set of instructions to use.
+     * @return The modified JSON object.
+     * @throws IllegalArgumentException
+     *             if the given arguments are not accepted.
+     * @throws JsonWrapperException
+     *             if the strings can't be parsed as JSON.
+     */
     public static String apply(String orig, String patch) throws IllegalArgumentException {
 
         // by providing null as hint we default to GSON.
@@ -75,6 +94,17 @@ public class JsonPatch {
     }
 
 
+    /**
+     * Patches the first argument with the second. Accepts two GSON {@link JsonObject} or (if jar is provided) a Jackson
+     * style {@link ObjectNode}.
+     * 
+     * @param orig
+     *            Object to patch. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+     * @param patch
+     *            Object holding patch instructions. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+     * @throws IllegalArgumentException
+     *             if the given arguments are not accepted.
+     */
     public static void apply(Object orig, Object patch) {
 
         JzonElement origEl = JsonWrapperFactory.wrap(orig);
@@ -85,7 +115,7 @@ public class JsonPatch {
     }
 
 
-    public static void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
+    private static void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
 
         if (!origEl.isJsonObject()) {
             throw new IllegalArgumentException("Orig is not a json object");

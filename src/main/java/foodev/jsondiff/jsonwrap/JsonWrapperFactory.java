@@ -3,6 +3,12 @@ package foodev.jsondiff.jsonwrap;
 import foodev.jsondiff.jsonwrap.gson.GsonWrapper;
 
 
+/**
+ * Internal wrapper helper.
+ * 
+ * @author Martin Algesten
+ * 
+ */
 public class JsonWrapperFactory {
 
     private final static Wrapper gsonWrapper = new GsonWrapper();

@@ -10,13 +10,17 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
-import foodev.jsondiff.jsonwrap.JzonArray;
-import foodev.jsondiff.jsonwrap.JzonElement;
-import foodev.jsondiff.jsonwrap.JzonObject;
-import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
+import org.codehaus.jackson.node.ObjectNode;
+
+import com.google.gson.JsonObject;
 
 import foodev.jsondiff.incava.IncavaDiff;
 import foodev.jsondiff.incava.IncavaEntry;
+import foodev.jsondiff.jsonwrap.JsonWrapperException;
+import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
+import foodev.jsondiff.jsonwrap.JzonArray;
+import foodev.jsondiff.jsonwrap.JzonElement;
+import foodev.jsondiff.jsonwrap.JzonObject;
 
 
 /**
@@ -83,7 +87,21 @@ public class JsonDiff {
     }
 
 
-    public static String diff(String from, String to) {
+    /**
+     * Runs a diff on the two given JSON objects given as string to produce another JSON object with instructions of how
+     * to transform the first argument to the second. Both from/to are expected to be objects {}.
+     * 
+     * @param from
+     *            The origin to transform
+     * @param to
+     *            The desired result
+     * @return The set of instructions to go from -> to as a JSON object {}.
+     * @throws IllegalArgumentException
+     *             if the given arguments are not accepted.
+     * @throws JsonWrapperException
+     *             if the strings can't be parsed as JSON.
+     */
+    public static String diff(String from, String to) throws IllegalArgumentException, JsonWrapperException {
 
         JzonElement fromEl = JsonWrapperFactory.parse(from, JsonDiff.hint);
         JzonElement toEl = JsonWrapperFactory.parse(to, JsonDiff.hint);
@@ -93,7 +111,19 @@ public class JsonDiff {
     }
 
 
-    public static Object diff(Object from, Object to) {
+    /**
+     * Runs a diff using underlying JSON parser implementations. Accepts two GSON {@link JsonObject} or (if jar is
+     * provided) a Jackson style {@link ObjectNode}. The returned type is the same as the received.
+     * 
+     * @param from
+     *            Object to transform from. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+     * @param to
+     *            Object to transform to. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+     * @return Object containing the instructions. The type will be the same as that passed in constructor.
+     * @throws IllegalArgumentException
+     *             if the given arguments are not accepted.
+     */
+    public static Object diff(Object from, Object to) throws IllegalArgumentException {
 
         JzonElement fromEl = JsonWrapperFactory.wrap(from);
         JzonElement toEl = JsonWrapperFactory.wrap(to);
@@ -104,7 +134,7 @@ public class JsonDiff {
     }
 
 
-    public static JzonObject diff(JzonElement fromEl, JzonElement toEl) {
+    private static JzonObject diff(JzonElement fromEl, JzonElement toEl) {
 
         if (!fromEl.isJsonObject()) {
             throw new IllegalArgumentException("From is not a json object");
