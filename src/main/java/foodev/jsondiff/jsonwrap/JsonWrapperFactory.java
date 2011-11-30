@@ -46,7 +46,7 @@ public class JsonWrapperFactory {
         } else if (jacksonWrapper != null && jacksonWrapper.accepts(hint)) {
             return jacksonWrapper;
         } else {
-            throw new IllegalStateException("No json wrapper accepts: " + hint.getClass().getName());
+            throw new IllegalStateException("No json wrapper accepts: " + (hint == null ? hint : hint.getClass().getName()));
         }
     }
 
