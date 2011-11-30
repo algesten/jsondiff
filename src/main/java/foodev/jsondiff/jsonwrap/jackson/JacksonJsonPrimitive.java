@@ -1,11 +1,13 @@
 package foodev.jsondiff.jsonwrap.jackson;
 
-import foodev.jsondiff.jsonwrap.JsonPrimitive;
+import org.codehaus.jackson.node.ValueNode;
+
+import foodev.jsondiff.jsonwrap.JzonPrimitive;
 
 
-public class JacksonJsonPrimitive extends JacksonJsonElement implements JsonPrimitive {
+public class JacksonJsonPrimitive extends JacksonJsonElement implements JzonPrimitive {
 
-    public JacksonJsonPrimitive(org.codehaus.jackson.node.ValueNode wrapped) {
+    public JacksonJsonPrimitive(ValueNode wrapped) {
         super(wrapped);
     }
 

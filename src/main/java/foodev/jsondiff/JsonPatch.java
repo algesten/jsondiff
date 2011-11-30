@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.Map.Entry;
 import java.util.TreeSet;
 
-import foodev.jsondiff.jsonwrap.JsonArray;
-import foodev.jsondiff.jsonwrap.JsonElement;
-import foodev.jsondiff.jsonwrap.JsonObject;
+import foodev.jsondiff.jsonwrap.JzonArray;
+import foodev.jsondiff.jsonwrap.JzonElement;
+import foodev.jsondiff.jsonwrap.JzonObject;
 import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
 
 /**
@@ -59,8 +59,8 @@ public class JsonPatch {
     public static String apply(String orig, String patch) throws IllegalArgumentException {
 
         // by providing null as hint we default to GSON.
-        JsonElement origEl = JsonWrapperFactory.parse(orig, JsonPatch.hint);
-        JsonElement patchEl = JsonWrapperFactory.parse(patch, JsonPatch.hint);
+        JzonElement origEl = JsonWrapperFactory.parse(orig, JsonPatch.hint);
+        JzonElement patchEl = JsonWrapperFactory.parse(patch, JsonPatch.hint);
 
         apply(origEl, patchEl);
 
@@ -71,15 +71,15 @@ public class JsonPatch {
 
     public static void apply(Object orig, Object patch) {
 
-        JsonElement origEl = JsonWrapperFactory.wrap(orig);
-        JsonElement patchEl = JsonWrapperFactory.wrap(patch);
+        JzonElement origEl = JsonWrapperFactory.wrap(orig);
+        JzonElement patchEl = JsonWrapperFactory.wrap(patch);
 
         apply(origEl, patchEl);
 
     }
 
 
-    public static void apply(JsonElement origEl, JsonElement patchEl) throws IllegalArgumentException {
+    public static void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
 
         if (!origEl.isJsonObject()) {
             throw new IllegalArgumentException("Orig is not a json object");
@@ -88,19 +88,19 @@ public class JsonPatch {
             throw new IllegalArgumentException("Patch is not a json object");
         }
 
-        JsonObject orig = (JsonObject) origEl;
-        JsonObject patch = (JsonObject) patchEl;
+        JzonObject orig = (JzonObject) origEl;
+        JzonObject patch = (JzonObject) patchEl;
 
         TreeSet<Instruction> instructions = new TreeSet<Instruction>();
 
-        for (Entry<String, JsonElement> entry : patch.entrySet()) {
+        for (Entry<String, JzonElement> entry : patch.entrySet()) {
             instructions.add(new Instruction(entry.getKey(), entry.getValue()));
         }
 
         for (Instruction instr : instructions) {
 
-            JsonElement obj = orig.get(instr.key);
-            JsonArray arr = null;
+            JzonElement obj = orig.get(instr.key);
+            JzonArray arr = null;
             int lastIndex = -1;
             boolean grew = false;
 
@@ -117,14 +117,14 @@ public class JsonPatch {
 
                     if (obj != null && obj.isJsonArray()) {
 
-                        arr = (JsonArray) obj;
+                        arr = (JzonArray) obj;
                         grew = arrEnsureLength(arr, idx);
 
                         obj = arr.get(idx);
 
                     } else if (instr.oper != '-') {
 
-                        JsonArray tmp = JsonWrapperFactory.createJsonArray(orig);
+                        JzonArray tmp = JsonWrapperFactory.createJsonArray(orig);
                         grew = arrEnsureLength(tmp, idx);
 
                         if (first) {
@@ -159,7 +159,7 @@ public class JsonPatch {
                 if (instr.el.isJsonObject()) {
 
                     if (obj != null && obj.isJsonObject() && instr.el.isJsonObject()) {
-                        apply((JsonObject) obj, (JsonObject) instr.el);
+                        apply((JzonObject) obj, (JzonObject) instr.el);
                         continue;
                     }
 
@@ -255,7 +255,7 @@ public class JsonPatch {
     }
 
 
-    private static boolean arrEnsureLength(JsonArray arr, int idx) {
+    private static boolean arrEnsureLength(JzonArray arr, int idx) {
 
         int len = idx + 1;
 
@@ -310,10 +310,10 @@ public class JsonPatch {
         final ArrayList<Integer> index;
         final boolean arrayInsert;
         final char oper;
-        final JsonElement el;
+        final JzonElement el;
 
 
-        public Instruction(String str, JsonElement el) {
+        public Instruction(String str, JzonElement el) {
 
             this.orig = str;
             this.el = el;

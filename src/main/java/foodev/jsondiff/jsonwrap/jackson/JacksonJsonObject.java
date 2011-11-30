@@ -5,16 +5,19 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import foodev.jsondiff.jsonwrap.JsonElement;
-import foodev.jsondiff.jsonwrap.JsonObject;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.ObjectNode;
+
+import foodev.jsondiff.jsonwrap.JzonElement;
+import foodev.jsondiff.jsonwrap.JzonObject;
 
 
-public class JacksonJsonObject extends JacksonJsonElement implements JsonObject {
+public class JacksonJsonObject extends JacksonJsonElement implements JzonObject {
 
-    private final org.codehaus.jackson.node.ObjectNode wrapped;
+    private final ObjectNode wrapped;
 
 
-    public JacksonJsonObject(org.codehaus.jackson.node.ObjectNode wrapped) {
+    public JacksonJsonObject(ObjectNode wrapped) {
         super(wrapped);
         this.wrapped = wrapped;
     }
@@ -27,14 +30,14 @@ public class JacksonJsonObject extends JacksonJsonElement implements JsonObject 
 
 
     @Override
-    public JsonObject getAsJsonObject(String key) {
-        return (JsonObject) JacksonWrapper.wrap(wrapped.get(key));
+    public JzonObject getAsJsonObject(String key) {
+        return (JzonObject) JacksonWrapper.wrap(wrapped.get(key));
     }
 
 
     @Override
-    public void add(String key, JsonElement tmp) {
-        wrapped.put(key, (org.codehaus.jackson.JsonNode) tmp.unwrap());
+    public void add(String key, JzonElement tmp) {
+        wrapped.put(key, (JsonNode) tmp.unwrap());
     }
 
 
@@ -45,17 +48,17 @@ public class JacksonJsonObject extends JacksonJsonElement implements JsonObject 
 
 
     @Override
-    public Collection<? extends Entry<String, JsonElement>> entrySet() {
+    public Collection<? extends Entry<String, JzonElement>> entrySet() {
 
-        HashSet<Entry<String, JsonElement>> jset = new HashSet<Entry<String, JsonElement>>();
+        HashSet<Entry<String, JzonElement>> jset = new HashSet<Entry<String, JzonElement>>();
         
-        for (Iterator<Entry<String, org.codehaus.jackson.JsonNode>> i = wrapped.getFields(); i.hasNext();) {
+        for (Iterator<Entry<String, JsonNode>> i = wrapped.getFields(); i.hasNext();) {
             
-            final Entry<String, org.codehaus.jackson.JsonNode> e = i.next();
+            final Entry<String, JsonNode> e = i.next();
             
-            final JsonElement el = JacksonWrapper.wrap(e.getValue());
+            final JzonElement el = JacksonWrapper.wrap(e.getValue());
 
-            jset.add(new Entry<String, JsonElement>() {
+            jset.add(new Entry<String, JzonElement>() {
 
                 @Override
                 public String getKey() {
@@ -64,13 +67,13 @@ public class JacksonJsonObject extends JacksonJsonElement implements JsonObject 
 
 
                 @Override
-                public JsonElement getValue() {
+                public JzonElement getValue() {
                     return el;
                 }
 
 
                 @Override
-                public JsonElement setValue(JsonElement value) {
+                public JzonElement setValue(JzonElement value) {
                     throw new UnsupportedOperationException();
                 }
             });
@@ -82,7 +85,7 @@ public class JacksonJsonObject extends JacksonJsonElement implements JsonObject 
 
 
     @Override
-    public JsonElement get(String key) {
+    public JzonElement get(String key) {
         return JacksonWrapper.wrap(wrapped.get(key));
     }
 

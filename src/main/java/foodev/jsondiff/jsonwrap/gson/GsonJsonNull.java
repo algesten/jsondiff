@@ -1,11 +1,13 @@
 package foodev.jsondiff.jsonwrap.gson;
 
-import foodev.jsondiff.jsonwrap.JsonNull;
+import com.google.gson.JsonNull;
+
+import foodev.jsondiff.jsonwrap.JzonNull;
 
 
-public class GsonJsonNull extends GsonJsonElement implements JsonNull {
+public class GsonJsonNull extends GsonJsonElement implements JzonNull {
 
-    static final com.google.gson.JsonNull JNULL = new com.google.gson.JsonNull();
+    static final JsonNull JNULL = new JsonNull();
 
 
     public final static GsonJsonNull INSTANCE = new GsonJsonNull();

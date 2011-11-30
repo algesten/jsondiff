@@ -5,16 +5,19 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import foodev.jsondiff.jsonwrap.JsonElement;
-import foodev.jsondiff.jsonwrap.JsonObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import foodev.jsondiff.jsonwrap.JzonElement;
+import foodev.jsondiff.jsonwrap.JzonObject;
 
 
-public class GsonJsonObject extends GsonJsonElement implements JsonObject {
+public class GsonJsonObject extends GsonJsonElement implements JzonObject {
 
-    private final com.google.gson.JsonObject wrapped;
+    private final JsonObject wrapped;
 
 
-    public GsonJsonObject(com.google.gson.JsonObject wrapped) {
+    public GsonJsonObject(JsonObject wrapped) {
         super(wrapped);
         this.wrapped = wrapped;
     }
@@ -27,14 +30,14 @@ public class GsonJsonObject extends GsonJsonElement implements JsonObject {
 
 
     @Override
-    public JsonObject getAsJsonObject(String key) {
-        return (JsonObject) GsonWrapper.wrap(wrapped.getAsJsonObject(key));
+    public JzonObject getAsJsonObject(String key) {
+        return (JzonObject) GsonWrapper.wrap(wrapped.getAsJsonObject(key));
     }
 
 
     @Override
-    public void add(String key, JsonElement tmp) {
-        wrapped.add(key, (com.google.gson.JsonElement)tmp.unwrap());
+    public void add(String key, JzonElement tmp) {
+        wrapped.add(key, (JsonElement)tmp.unwrap());
     }
 
 
@@ -45,17 +48,17 @@ public class GsonJsonObject extends GsonJsonElement implements JsonObject {
 
 
     @Override
-    public Collection<? extends Entry<String, JsonElement>> entrySet() {
+    public Collection<? extends Entry<String, JzonElement>> entrySet() {
 
-        Set<Entry<String, com.google.gson.JsonElement>> set = wrapped.entrySet();
+        Set<Entry<String, JsonElement>> set = wrapped.entrySet();
 
-        HashSet<Entry<String, JsonElement>> jset = new HashSet<Entry<String, JsonElement>>();
+        HashSet<Entry<String, JzonElement>> jset = new HashSet<Entry<String, JzonElement>>();
 
-        for (final Entry<String, com.google.gson.JsonElement> e : set) {
+        for (final Entry<String, JsonElement> e : set) {
 
-            final JsonElement el = GsonWrapper.wrap(e.getValue());
+            final JzonElement el = GsonWrapper.wrap(e.getValue());
 
-            jset.add(new Entry<String, JsonElement>() {
+            jset.add(new Entry<String, JzonElement>() {
 
                 @Override
                 public String getKey() {
@@ -64,13 +67,13 @@ public class GsonJsonObject extends GsonJsonElement implements JsonObject {
 
 
                 @Override
-                public JsonElement getValue() {
+                public JzonElement getValue() {
                     return el;
                 }
 
 
                 @Override
-                public JsonElement setValue(JsonElement value) {
+                public JzonElement setValue(JzonElement value) {
                     throw new UnsupportedOperationException();
                 }
             });
@@ -82,7 +85,7 @@ public class GsonJsonObject extends GsonJsonElement implements JsonObject {
 
 
     @Override
-    public JsonElement get(String key) {
+    public JzonElement get(String key) {
         return GsonWrapper.wrap(wrapped.get(key));
     }
 

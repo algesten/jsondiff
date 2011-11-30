@@ -3,18 +3,18 @@ package foodev.jsondiff.jsonwrap;
 
 public interface Wrapper {
 
-    JsonElement parse(String json);
+    JzonElement parse(String json);
 
 
     boolean accepts(Object o);
 
 
-    JsonElement wrap(Object o);
+    JzonElement wrap(Object o);
 
 
-    JsonObject createJsonObject();
+    JzonObject createJsonObject();
 
 
-    JsonArray createJsonArray();
+    JzonArray createJsonArray();
 
 }

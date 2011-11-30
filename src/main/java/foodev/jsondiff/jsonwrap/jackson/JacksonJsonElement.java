@@ -1,14 +1,16 @@
 package foodev.jsondiff.jsonwrap.jackson;
 
-import foodev.jsondiff.jsonwrap.JsonElement;
+import org.codehaus.jackson.JsonNode;
+
+import foodev.jsondiff.jsonwrap.JzonElement;
 
 
-public class JacksonJsonElement implements JsonElement {
+public class JacksonJsonElement implements JzonElement {
 
-    final org.codehaus.jackson.JsonNode wrapped;
+    final JsonNode wrapped;
 
 
-    protected JacksonJsonElement(org.codehaus.jackson.JsonNode wrapped) {
+    protected JacksonJsonElement(JsonNode wrapped) {
         this.wrapped = wrapped;
     }
 

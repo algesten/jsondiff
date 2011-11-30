@@ -3,16 +3,19 @@ package foodev.jsondiff.jsonwrap.gson;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 
-import foodev.jsondiff.jsonwrap.JsonArray;
-import foodev.jsondiff.jsonwrap.JsonElement;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+
+import foodev.jsondiff.jsonwrap.JzonArray;
+import foodev.jsondiff.jsonwrap.JzonElement;
 
 
-public class GsonJsonArray extends GsonJsonElement implements JsonArray {
+public class GsonJsonArray extends GsonJsonElement implements JzonArray {
 
-    private final com.google.gson.JsonArray wrapped;
+    private final JsonArray wrapped;
 
 
-    public GsonJsonArray(com.google.gson.JsonArray wrapped) {
+    public GsonJsonArray(JsonArray wrapped) {
         super(wrapped);
         this.wrapped = wrapped;
     }
@@ -25,7 +28,7 @@ public class GsonJsonArray extends GsonJsonElement implements JsonArray {
 
 
     @Override
-    public JsonElement get(int index) {
+    public JzonElement get(int index) {
         return GsonWrapper.wrap(wrapped.get(index));
     }
 
@@ -37,14 +40,14 @@ public class GsonJsonArray extends GsonJsonElement implements JsonArray {
 
 
     @Override
-    public void insert(int index, JsonElement el) {
-        getElements(wrapped).add(index, (com.google.gson.JsonElement) el.unwrap());
+    public void insert(int index, JzonElement el) {
+        getElements(wrapped).add(index, (JsonElement) el.unwrap());
     }
 
 
     @Override
-    public void set(int index, JsonElement el) {
-        getElements(wrapped).set(index, (com.google.gson.JsonElement) el.unwrap());
+    public void set(int index, JzonElement el) {
+        getElements(wrapped).set(index, (JsonElement) el.unwrap());
     }
 
 
@@ -60,7 +63,7 @@ public class GsonJsonArray extends GsonJsonElement implements JsonArray {
     static {
 
         try {
-            JsonArray_elements = com.google.gson.JsonArray.class.getDeclaredField("elements");
+            JsonArray_elements = JsonArray.class.getDeclaredField("elements");
             JsonArray_elements.setAccessible(true);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -70,10 +73,10 @@ public class GsonJsonArray extends GsonJsonElement implements JsonArray {
 
 
     @SuppressWarnings("unchecked")
-    private static ArrayList<com.google.gson.JsonElement> getElements(com.google.gson.JsonArray arr) {
+    private static ArrayList<JsonElement> getElements(JsonArray arr) {
 
         try {
-            return (ArrayList<com.google.gson.JsonElement>) JsonArray_elements.get(arr);
+            return (ArrayList<JsonElement>) JsonArray_elements.get(arr);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

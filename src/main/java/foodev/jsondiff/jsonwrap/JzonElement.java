@@ -1,7 +1,7 @@
 package foodev.jsondiff.jsonwrap;
 
 
-public interface JsonElement {
+public interface JzonElement {
 
     boolean isJsonObject();
 

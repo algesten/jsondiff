@@ -9,24 +9,24 @@ public class JsonWrapperFactory {
     private final static Wrapper jacksonWrapper;
 
 
-    public static JsonElement parse(String json, Object hint) {
+    public static JzonElement parse(String json, Object hint) {
         return selectWrapper(hint).parse(json);
     }
 
 
-    public static JsonObject createJsonObject(Object hint) {
+    public static JzonObject createJsonObject(Object hint) {
         return selectWrapper(hint).createJsonObject();
     }
 
 
-    public static JsonArray createJsonArray(Object hint) {
+    public static JzonArray createJsonArray(Object hint) {
         return selectWrapper(hint).createJsonArray();
     }
 
 
-    public static JsonElement wrap(Object obj) {
-        if (obj instanceof JsonElement) {
-            return (JsonElement) obj;
+    public static JzonElement wrap(Object obj) {
+        if (obj instanceof JzonElement) {
+            return (JzonElement) obj;
         } else {
             return selectWrapper(obj).wrap(obj);
         }

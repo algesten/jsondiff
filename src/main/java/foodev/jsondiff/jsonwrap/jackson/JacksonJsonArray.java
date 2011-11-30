@@ -1,16 +1,19 @@
 package foodev.jsondiff.jsonwrap.jackson;
 
 
-import foodev.jsondiff.jsonwrap.JsonArray;
-import foodev.jsondiff.jsonwrap.JsonElement;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.ArrayNode;
+
+import foodev.jsondiff.jsonwrap.JzonArray;
+import foodev.jsondiff.jsonwrap.JzonElement;
 
 
-public class JacksonJsonArray extends JacksonJsonElement implements JsonArray {
+public class JacksonJsonArray extends JacksonJsonElement implements JzonArray {
 
-    private final org.codehaus.jackson.node.ArrayNode wrapped;
+    private final ArrayNode wrapped;
 
 
-    public JacksonJsonArray(org.codehaus.jackson.node.ArrayNode wrapped) {
+    public JacksonJsonArray(ArrayNode wrapped) {
         super(wrapped);
         this.wrapped = wrapped;
     }
@@ -23,7 +26,7 @@ public class JacksonJsonArray extends JacksonJsonElement implements JsonArray {
 
 
     @Override
-    public JsonElement get(int index) {
+    public JzonElement get(int index) {
         return JacksonWrapper.wrap(wrapped.get(index));
     }
 
@@ -35,14 +38,14 @@ public class JacksonJsonArray extends JacksonJsonElement implements JsonArray {
 
 
     @Override
-    public void insert(int index, JsonElement el) {
-        wrapped.insert(index,  (org.codehaus.jackson.JsonNode) el.unwrap());
+    public void insert(int index, JzonElement el) {
+        wrapped.insert(index,  (JsonNode) el.unwrap());
     }
 
 
     @Override
-    public void set(int index, JsonElement el) {
-        wrapped.set(index,  (org.codehaus.jackson.JsonNode) el.unwrap());
+    public void set(int index, JzonElement el) {
+        wrapped.set(index,  (JsonNode) el.unwrap());
     }
 
 

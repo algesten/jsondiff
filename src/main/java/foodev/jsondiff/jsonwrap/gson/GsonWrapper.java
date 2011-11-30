@@ -1,13 +1,14 @@
 package foodev.jsondiff.jsonwrap.gson;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
 
-import foodev.jsondiff.jsonwrap.JsonElement;
 import foodev.jsondiff.jsonwrap.JsonWrapperException;
+import foodev.jsondiff.jsonwrap.JzonElement;
 import foodev.jsondiff.jsonwrap.Wrapper;
 
 
@@ -16,7 +17,7 @@ public class GsonWrapper implements Wrapper {
     private final static JsonParser JSON = new JsonParser();
 
 
-    public static JsonElement wrap(com.google.gson.JsonElement el) {
+    public static JzonElement wrap(JsonElement el) {
         if (el == null || el.isJsonNull()) {
             return GsonJsonNull.INSTANCE;
         } else if (el.isJsonArray()) {
@@ -32,7 +33,7 @@ public class GsonWrapper implements Wrapper {
 
 
     @Override
-    public JsonElement parse(String json) {
+    public JzonElement parse(String json) {
         try {
             return wrap(JSON.parse(json));
         } catch (JsonSyntaxException jse) {
@@ -43,25 +44,25 @@ public class GsonWrapper implements Wrapper {
 
     @Override
     public boolean accepts(Object o) {
-        return o == null || o instanceof GsonJsonElement || o instanceof com.google.gson.JsonElement;
+        return o == null || o instanceof GsonJsonElement || o instanceof JsonElement;
     }
 
 
     @Override
-    public JsonElement wrap(Object o) {
-        return wrap((com.google.gson.JsonElement) o);
+    public JzonElement wrap(Object o) {
+        return wrap((JsonElement) o);
     }
 
 
     @Override
-    public foodev.jsondiff.jsonwrap.JsonObject createJsonObject() {
-        return (foodev.jsondiff.jsonwrap.JsonObject) wrap(new JsonObject());
+    public foodev.jsondiff.jsonwrap.JzonObject createJsonObject() {
+        return (foodev.jsondiff.jsonwrap.JzonObject) wrap(new JsonObject());
     }
 
 
     @Override
-    public foodev.jsondiff.jsonwrap.JsonArray createJsonArray() {
-        return (foodev.jsondiff.jsonwrap.JsonArray) wrap(new JsonArray());
+    public foodev.jsondiff.jsonwrap.JzonArray createJsonArray() {
+        return (foodev.jsondiff.jsonwrap.JzonArray) wrap(new JsonArray());
     }
 
 

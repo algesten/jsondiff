@@ -11,8 +11,10 @@ import org.codehaus.jackson.node.ArrayNode;
 import org.codehaus.jackson.node.ObjectNode;
 import org.codehaus.jackson.node.ValueNode;
 
-import foodev.jsondiff.jsonwrap.JsonElement;
 import foodev.jsondiff.jsonwrap.JsonWrapperException;
+import foodev.jsondiff.jsonwrap.JzonArray;
+import foodev.jsondiff.jsonwrap.JzonElement;
+import foodev.jsondiff.jsonwrap.JzonObject;
 import foodev.jsondiff.jsonwrap.Wrapper;
 
 
@@ -20,7 +22,8 @@ public class JacksonWrapper implements Wrapper {
 
     private final static ObjectMapper JSON = new ObjectMapper();
 
-    public static JsonElement wrap(JsonNode el) {
+
+    public static JzonElement wrap(JsonNode el) {
         if (el == null || el.isNull()) {
             return JacksonJsonNull.INSTANCE;
         } else if (el.isArray()) {
@@ -36,7 +39,7 @@ public class JacksonWrapper implements Wrapper {
 
 
     @Override
-    public JsonElement parse(String json) {
+    public JzonElement parse(String json) {
         try {
             JsonParser parser = JSON.getJsonFactory().createJsonParser(json);
             parser.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
@@ -57,20 +60,20 @@ public class JacksonWrapper implements Wrapper {
 
 
     @Override
-    public JsonElement wrap(Object o) {
+    public JzonElement wrap(Object o) {
         return wrap((JsonNode) o);
     }
 
 
     @Override
-    public foodev.jsondiff.jsonwrap.JsonObject createJsonObject() {
-        return (foodev.jsondiff.jsonwrap.JsonObject) wrap(JSON.createObjectNode());
+    public JzonObject createJsonObject() {
+        return (JzonObject) wrap(JSON.createObjectNode());
     }
 
 
     @Override
-    public foodev.jsondiff.jsonwrap.JsonArray createJsonArray() {
-        return (foodev.jsondiff.jsonwrap.JsonArray) wrap(JSON.createArrayNode());
+    public JzonArray createJsonArray() {
+        return (JzonArray) wrap(JSON.createArrayNode());
     }
 
 

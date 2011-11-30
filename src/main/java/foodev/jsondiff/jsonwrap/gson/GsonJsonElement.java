@@ -1,14 +1,16 @@
 package foodev.jsondiff.jsonwrap.gson;
 
-import foodev.jsondiff.jsonwrap.JsonElement;
+import com.google.gson.JsonElement;
+
+import foodev.jsondiff.jsonwrap.JzonElement;
 
 
-public class GsonJsonElement implements JsonElement {
+public class GsonJsonElement implements JzonElement {
 
-    final com.google.gson.JsonElement wrapped;
+    final JsonElement wrapped;
 
 
-    protected GsonJsonElement(com.google.gson.JsonElement wrapped) {
+    protected GsonJsonElement(JsonElement wrapped) {
         this.wrapped = wrapped;
     }
 
