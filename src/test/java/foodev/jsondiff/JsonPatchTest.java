@@ -238,7 +238,7 @@ public class JsonPatchTest {
 
     @Test
     public void testAddRemoveOrderMatters() {
-        String n = JsonPatch.apply("{a:[0,1,2]}", "{\"-a[0]\":null,\"-a[1]\":null,\"a[+1]\":3}");
+        String n = JsonPatch.apply("{a:[0,1,2]}", "{\"-a[0]\":null,\"-a[1]\":null,\"a[+3]\":3}");
         Assert.assertEquals("{\"a\":[2,3]}", n);
     }
 
@@ -246,7 +246,7 @@ public class JsonPatchTest {
     @Test
     public void testAddRemoveOrderMatters2() {
         String n = JsonPatch.apply("{a:[{b:0},{b:1},{b:2},{b:3}]}",
-                "{\"a[+1]\":{d:2},\"-a[0]\":0,\"-a[1]\":0,\"~a[0]\":{c:2}}");
+                "{\"a[+3]\":{d:2},\"-a[0]\":0,\"-a[1]\":0,\"~a[2]\":{c:2}}");
         Assert.assertEquals("{\"a\":[{\"b\":2,\"c\":2},{\"d\":2},{\"b\":3}]}", n);
     }
 
@@ -254,7 +254,7 @@ public class JsonPatchTest {
     @Test
     public void testAddRemoveOrderMatters3() {
         String n = JsonPatch.apply("{a:[{b:0},{b:1},{b:2},{b:3}]}",
-                "{\"a[+1]\":{d:2},\"-a[1]\":0,\"~a[2]\":{c:2}}");
+                "{\"a[+2]\":{d:2},\"-a[1]\":0,\"~a[2]\":{c:2}}");
         Assert.assertEquals("{\"a\":[{\"b\":0},{\"d\":2},{\"b\":2,\"c\":2},{\"b\":3}]}", n);
     }
 

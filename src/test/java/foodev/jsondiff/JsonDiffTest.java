@@ -227,7 +227,7 @@ public class JsonDiffTest {
     public void testArrayAddTwoOtherToExisting() {
 
         String d = JsonDiff.diff("{a: [3,4,1,2]}", "{a:[1,2,5]}");
-        Assert.assertEquals("{\"-a[0]\":0,\"-a[1]\":0,\"a[+2]\":5}", d);
+        Assert.assertEquals("{\"-a[0]\":0,\"-a[1]\":0,\"a[+4]\":5}", d);
 
         String p = JsonPatch.apply("{a: [3,4,1,2]}", d);
         Assert.assertEquals("{\"a\":[1,2,5]}", p);
@@ -495,7 +495,7 @@ public class JsonDiffTest {
         String to = "{\"a\":[\"s2\",\"s3\",\"s4\"]}";
 
         String diff = JsonDiff.diff(from, to);
-        Assert.assertEquals("{\"-a[0]\":0,\"a[+2]\":\"s4\"}", diff);
+        Assert.assertEquals("{\"-a[0]\":0,\"a[+3]\":\"s4\"}", diff);
 
         String p = JsonPatch.apply(from, diff);
         Assert.assertEquals(to, p);
@@ -508,7 +508,7 @@ public class JsonDiffTest {
     public void testArrayObjectsRotateLeft() {
         String from = "{\"a\":[{\"b\":1},{\"c\":2},{\"d\":3}]}";
         String to = "{\"a\":[{\"c\":2},{\"d\":3},{\"e\":4}]}";
-        String diff = "{\"-a[0]\":0,\"a[+2]\":{\"e\":4}}";
+        String diff = "{\"-a[0]\":0,\"a[+3]\":{\"e\":4}}";
 
         String d = JsonDiff.diff(from, to);
         Assert.assertEquals(diff, d);
@@ -525,7 +525,7 @@ public class JsonDiffTest {
 
         String from = "{\"a\":[{\"c\":2},{\"d\":3},{\"e\":4}]}";
         String to = "{\"a\":[{\"b\":1},{\"c\":2},{\"d\":3}]}";
-        String diff = "{\"a[+0]\":{\"b\":1},\"-a[2]\":0}";
+        String diff = "{\"a[+0]\":{\"b\":1},\"-a[3]\":0}";
 
         String d = JsonDiff.diff(from, to);
         Assert.assertEquals(diff, d);
@@ -570,8 +570,8 @@ public class JsonDiffTest {
     public void testArrayObjectsWithNullAndChanges() {
 
         String from = "{\"a\":[{\"c\":2,\"d\":3},null,{\"c\":2,\"d\":3}]}";
-        String to = "{\"a\":[{\"c\":2,\"d\":3},{\"c\":2,\"d\":7}]}";
-        String diff = "{\"-a[1]\":0,\"~a[1]\":{\"d\":7}}";
+        String to = "{\"a\":[{\"c\":2,\"d\":3},{\"c\":2,\"d\":7},42]}";
+        String diff = "{\"-a[1]\":0,\"~a[2]\":{\"d\":7},\"a[+3]\":42}";
 
         String d = JsonDiff.diff(from, to);
         Assert.assertEquals(diff, d);

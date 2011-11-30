@@ -48,8 +48,8 @@ import foodev.jsondiff.incava.IncavaEntry;
  * </pre>
  * 
  * <p>
- * Operation order is delete, insert, set, merge. This is important when altering arrays, since deletions/additions will
- * affect the array index of subsequent operations.
+ * Instruction order is merge, set, insert, delete. This is important when altering arrays, since insertions will affect
+ * the array index of subsequent delete instructions.
  * </p>
  * 
  * <p>
@@ -99,9 +99,10 @@ public class JsonDiff {
         ArrayList<Leaf> fromLeaves = new ArrayList<Leaf>();
         ArrayList<Leaf> toLeaves = new ArrayList<Leaf>();
 
+        HashMap<Integer, ArrNode> fromArrs = new HashMap<Integer, ArrNode>();
         HashMap<Integer, ArrNode> toArrs = new HashMap<Integer, ArrNode>();
 
-        findLeaves(fromRoot, from, fromLeaves, null);
+        findLeaves(fromRoot, from, fromLeaves, fromArrs);
         findLeaves(toRoot, to, toLeaves, toArrs);
 
         IncavaDiff<Leaf> idiff = new IncavaDiff<Leaf>(fromLeaves, toLeaves);
@@ -124,11 +125,16 @@ public class JsonDiff {
         }
 
         adjustArrayMutationBoundaries(diff, fromLeaves, toLeaves);
-        adjustArrayDeletionIndexes(diff, fromLeaves, toArrs, additions);
+        adjustArrayDeletion(diff, fromLeaves, toArrs, additions);
+        adjustArrayInsertion(diff, toLeaves, fromArrs, deletions);
 
-        // rebuild since adjustArrayDeletionIndexes alters adjust hash.
+        // rebuild since adjustArrayInsertion/DeletionIndexes alters indexed hash.
+        deletions.clear();
         additions.clear();
         for (IncavaEntry d : diff) {
+            for (int i = d.getDeletedStart(), n = d.getDeletedEnd(); i <= n; i++) {
+                deletions.add(fromLeaves.get(i).parent.doHash(true));
+            }
             for (int i = d.getAddedStart(), n = d.getAddedEnd(); i <= n; i++) {
                 additions.add(toLeaves.get(i).parent.doHash(true));
             }
@@ -415,7 +421,7 @@ public class JsonDiff {
     // this causes problems when mutations happens after the deleted index. Issue #3.
     // this method adjusts the toLeaves to ensure the array indexes are the same as that of
     // the fromArray regardless of deletions.
-    private static void adjustArrayDeletionIndexes(List<IncavaEntry> diff, ArrayList<Leaf> fromLeaves,
+    private static void adjustArrayDeletion(List<IncavaEntry> diff, ArrayList<Leaf> fromLeaves,
             HashMap<Integer, ArrNode> toArrs, HashSet<Integer> additions) {
 
 
@@ -423,35 +429,94 @@ public class JsonDiff {
 
             if (ent.getDeletedStart() >= 0 && ent.getDeletedEnd() >= 0) {
 
-                Leaf leaf = fromLeaves.get(ent.getDeletedStart());
+                for (int cur = ent.getDeletedStart(), n = ent.getDeletedEnd(); cur <= n; cur++) {
 
-                if (leaf.parent instanceof ArrNode) {
+                    Leaf leaf = fromLeaves.get(cur);
 
-                    ArrNode first = (ArrNode) leaf.parent;
+                    if (leaf.parent instanceof ArrNode) {
 
-                    // don't adjust delete + add = set entries
-                    if (additions.contains(first.doHash(true))) {
-                        continue;
-                    }
+                        ArrNode first = (ArrNode) leaf.parent;
 
-                    // clone is used just to create a hash code for looking
-                    // up the real node from toArrs.
-                    ArrNode clone = new ArrNode(first.parent, first.el, 0);
-
-                    int i = first.index;
-
-                    while (true) {
-
-                        clone.index = i++;
-
-                        ArrNode adjust = toArrs.get(clone.doHash(true));
-
-                        if (adjust == null) {
-                            break;
+                        // don't adjust delete + add = set entries
+                        if (additions.contains(first.doHash(true))) {
+                            continue;
                         }
 
-                        // adjust forward one
-                        adjust.adjustOffset++;
+                        // clone is used just to create a hash code for looking
+                        // up the real node from toArrs.
+                        ArrNode clone = new ArrNode(first.parent, first.el, 0);
+
+                        int i = first.index;
+
+                        while (true) {
+
+                            clone.index = i++;
+
+                            ArrNode adjust = toArrs.get(clone.doHash(true));
+
+                            if (adjust == null) {
+                                break;
+                            }
+
+                            // adjust forward one
+                            adjust.index++;
+
+                        }
+
+                    }
+
+                }
+
+            }
+        }
+
+    }
+
+
+    // when inserting elements in an array, the indexes in subsequent cells differ between from/to
+    // this causes problems when mutations happens after the inserted index. Related to issue #3.
+    // this method adjusts the fromLeaves to ensure the array indexes are adjusted for every insertion.
+    private static void adjustArrayInsertion(List<IncavaEntry> diff, ArrayList<Leaf> toLeaves,
+            HashMap<Integer, ArrNode> fromArrs, HashSet<Integer> deletions) {
+
+
+        for (IncavaEntry ent : diff) {
+
+            if (ent.getAddedStart() >= 0 && ent.getAddedEnd() >= 0) {
+
+                for (int cur = ent.getAddedStart(), n = ent.getAddedEnd(); cur <= n; cur++) {
+
+                    Leaf leaf = toLeaves.get(cur);
+
+                    if (leaf.parent instanceof ArrNode) {
+
+                        ArrNode first = (ArrNode) leaf.parent;
+
+                        // don't adjust delete + add = set entries
+                        if (deletions.contains(first.doHash(true))) {
+                            continue;
+                        }
+
+                        // clone is used just to create a hash code for looking
+                        // up the real node from toArrs.
+                        ArrNode clone = new ArrNode(first.parent, first.el, 0);
+
+                        int i = first.index;
+
+                        while (true) {
+
+                            clone.index = i++;
+
+                            ArrNode adjust = fromArrs.get(clone.doHash(true));
+
+                            if (adjust == null) {
+                                break;
+                            }
+
+                            // adjust forward one
+                            adjust.index++;
+
+                        }
 
                     }
 
@@ -627,7 +692,6 @@ public class JsonDiff {
 
         final JsonElement el;
         int index;
-        int adjustOffset = 0; // index adjustments due to deletions
 
         ArrNode subindex;
 
@@ -644,7 +708,7 @@ public class JsonDiff {
             int i = parent.doHash(indexed);
             i = i * 31 + ArrNode.class.hashCode();
             if (indexed) {
-                i = i * 31 + index + adjustOffset;
+                i = i * 31 + index;
             }
             return i;
         }

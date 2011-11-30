@@ -42,8 +42,8 @@ import com.google.gson.JsonObject;
  * </pre>
  * 
  * <p>
- * Operation order is delete, insert, set, merge. This is important when altering arrays, since deletions/additions will
- * affect the array index of subsequent operations.
+ * Instruction order is merge, set, insert, delete. This is important when altering arrays, since insertions will affect
+ * the array index of subsequent delete instructions.
  * </p>
  * 
  * @author Martin Algesten
@@ -350,10 +350,10 @@ public class JsonPatch {
         final String key;
         final ArrayList<Integer> index;
 
-        // 2d - del
-        // 2e . insert
-        // 7c | set
         // 7e ~ merge
+        // 7c | set
+        // 2e . insert
+        // 2d - del
         final char oper;
 
         final JsonElement el;
@@ -417,11 +417,7 @@ public class JsonPatch {
         @Override
         public int compareTo(Instruction o) {
 
-            // 2d - del
-            // 2e . insert
-            // 7c | set
-            // 7e ~ merge
-            int i = (int) oper - (int) o.oper;
+            int i = (int) o.oper - (int) oper;
 
             if (i == 0) {
 

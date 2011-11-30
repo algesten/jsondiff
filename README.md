@@ -52,15 +52,15 @@ would yield a changed object as:
     "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
     "-key[4]:  0                     // removing element 4 current 5 becoming new 4 (value is ignored)
 
-#### Operation order ####
+#### Instruction order ####
 
-For arrays the operation order matter. Array insert and deletions will affect the index offset for each other and 
+For arrays the instruction order matter. Array insert and deletions will affect the index offset for each other and 
 subsequent operations. Regardless of operation order in the json object passed as diff, the entries are sorted as:
 
-1. Delete (`-`)
-2. Insert (`a[+n]`)
-3. Set (`a[n]`)
-4. Merge (`~a[n]`)
+1. Merge (`~a[n]`)
+2. Set (`a[n]`)
+3. Insert (`a[+n]`)
+4. Delete (`-`)
 
 Example:
 
@@ -72,12 +72,12 @@ Example:
       "a[2]": 42,
       "~a[3]": { foo: "bar" },
       "a[+1]": "example",
-      "-a[0]: null,
+      "-a[2]: null,
     };
 
-This would:
+This would yield:
 
-1. Delete item 0: `[1, 2, { me: "too" } ]`
-2. Insert at 1: `[1, "example", 2, { me: "too" }]`
-3. Set at 2: `[1, "example", 42, { me: "too" }]`
-4. Merge at 3: `[1, "example", 42, { me: "too", foo: "bar" }]`
+1. Merge at 3: `[0, 1, 2, { me: "too", foo: "bar" }]`
+2. Set at 2: `[0, 1, 42, { me: "too", foo: "bar" }]`
+3. Insert at 1: `[0, "example", 1, 42, { me: "too", foo: "bar" }]`
+4. Delete at 2: `[0, "example", 42, { me: "too", foo: "bar" }]`
