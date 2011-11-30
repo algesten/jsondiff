@@ -40,6 +40,11 @@ import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
  * </code>
  * </pre>
  * 
+ * <p>
+ * Operation order is delete, insert, set, merge. This is important when altering arrays, since deletions/additions will
+ * affect the array index of subsequent operations.
+ * </p>
+ * 
  * @author Martin Algesten
  * 
  */
@@ -48,13 +53,14 @@ public class JsonPatch {
     // by providing null as hint we default to GSON.
     private static Object hint = null;
 
-    
+
     // For testing
     static void setHint(Object hint) {
 
         JsonPatch.hint = hint;
 
     }
+
 
     public static String apply(String orig, String patch) throws IllegalArgumentException {
 
@@ -187,7 +193,7 @@ public class JsonPatch {
             // initial '~' and '-' has been stripped and dealt with
             if (arr != null) {
 
-                if (instr.arrayInsert && !grew) {
+                if (instr.isArrayInsert() && !grew) {
 
                     arr.insert(lastIndex, instr.el);
 
@@ -308,7 +314,11 @@ public class JsonPatch {
         final String orig;
         final String key;
         final ArrayList<Integer> index;
-        final boolean arrayInsert;
+
+        // 2d - del
+        // 2e . insert
+        // 7c | set
+        // 7e ~ merge
         final char oper;
         final JzonElement el;
 
@@ -317,6 +327,21 @@ public class JsonPatch {
 
             this.orig = str;
             this.el = el;
+
+            index = parseIndex(str);
+
+            boolean arrayInsert = false;
+            if (index != null) {
+
+                int t = str.lastIndexOf("[+");
+
+                if (t == str.lastIndexOf('[')) {
+                    arrayInsert = true;
+                }
+
+                str = str.substring(0, str.indexOf('['));
+
+            }
 
             switch (str.charAt(0)) {
             case '-':
@@ -328,24 +353,12 @@ public class JsonPatch {
                 str = str.substring(1);
                 break;
             default:
-                oper = ' '; // no oper
-            }
-
-            index = parseIndex(str);
-
-            boolean pArrayInsert = false;
-            if (index != null) {
-
-                int t = str.lastIndexOf("[+");
-
-                if (t == str.lastIndexOf('[')) {
-                    pArrayInsert = true;
+                if (arrayInsert) {
+                    oper = '.'; // insert
+                } else {
+                    oper = '|'; // set
                 }
-
-                str = str.substring(0, str.indexOf('['));
-
             }
-            this.arrayInsert = pArrayInsert;
 
             this.key = str;
 
@@ -357,17 +370,22 @@ public class JsonPatch {
                 throw new IllegalArgumentException("- at the same time as array insertion (nonsense): " + orig);
             }
 
+        }
 
+
+        boolean isArrayInsert() {
+            return oper == '.';
         }
 
 
         @Override
         public int compareTo(Instruction o) {
 
-            // 20 sp no oper
-            // 2d -
-            // 7e ~
-            int i = (int) o.oper - (int) oper;
+            // 2d - del
+            // 2e . insert
+            // 7c | set
+            // 7e ~ merge
+            int i = (int) oper - (int) o.oper;
 
             if (i == 0) {
 
@@ -379,13 +397,7 @@ public class JsonPatch {
                     i = compareArrays(ascending, index, o.index);
 
                     if (i == 0) {
-
-                        i = (arrayInsert == o.arrayInsert ? 0 : (arrayInsert ? 1 : -1));
-
-                        if (i == 0) {
-                            throw new IllegalArgumentException("Found duplicate instructions: " + orig);
-                        }
-
+                        throw new IllegalArgumentException("Found duplicate instructions: " + orig);
                     }
 
                 }

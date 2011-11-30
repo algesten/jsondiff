@@ -31,7 +31,7 @@ would yield a changed object as:
 ### Syntax ###
 
 * `~` (tilde) is an object merge. I.e. `{a:1}` merged with `{b:2}` would yield `{a:1,b:2}`
-* `-` (hyphen-minus) is a removal.
+* `-` (hyphen-minus) is a deletion.
 * `[n]` is an array index i.e. `a[4]` means element 4 in array named `a`.
 * `[+n]` means an array insertion. i.e `a[+4]` means insert an item at position 4.
 
@@ -51,3 +51,33 @@ would yield a changed object as:
     "key[+4]": { "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
     "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
     "-key[4]:  0                     // removing element 4 current 5 becoming new 4 (value is ignored)
+
+#### Operation order ####
+
+For arrays the operation order matter. Array insert and deletions will affect the index offset for each other and 
+subsequent operations. Regardless of operation order in the json object passed as diff, the entries are sorted as:
+
+1. Delete (`-`)
+2. Insert (`a[+n]`)
+3. Set (`a[n]`)
+4. Merge (`~a[n]`)
+
+Example:
+
+    var orig = {
+      a = [0, 1, 2, { me: "too" }];    
+    };
+
+    var patch = {
+      "a[2]": 42,
+      "~a[3]": { foo: "bar" },
+      "a[+1]": "example",
+      "-a[0]: null,
+    };
+
+This would:
+
+1. Delete item 0: `[1, 2, { me: "too" } ]`
+2. Insert at 1: `[1, "example", 2, { me: "too" }]`
+3. Set at 2: `[1, "example", 42, { me: "too" }]`
+4. Merge at 3: `[1, "example", 42, { me: "too", foo: "bar" }]`
