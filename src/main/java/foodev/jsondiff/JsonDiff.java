@@ -65,12 +65,22 @@ import foodev.jsondiff.incava.IncavaEntry;
  */
 public class JsonDiff {
 
+    // by providing null as hint we default to GSON.
+    private static Object hint = null;
+
+
+    // For testing
+    static void setHint(Object hint) {
+
+        JsonDiff.hint = hint;
+
+    }
+
 
     public static String diff(String from, String to) {
 
-        // by providing null as hint we default to GSON.
-        JsonElement fromEl = JsonWrapperFactory.parse(from, null);
-        JsonElement toEl = JsonWrapperFactory.parse(to, null);
+        JsonElement fromEl = JsonWrapperFactory.parse(from, JsonDiff.hint);
+        JsonElement toEl = JsonWrapperFactory.parse(to, JsonDiff.hint);
 
         return diff(fromEl, toEl).toString();
 

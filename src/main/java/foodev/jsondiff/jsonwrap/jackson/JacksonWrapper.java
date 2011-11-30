@@ -4,6 +4,7 @@ package foodev.jsondiff.jsonwrap.jackson;
 import java.io.IOException;
 
 import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ArrayNode;
@@ -18,7 +19,6 @@ import foodev.jsondiff.jsonwrap.Wrapper;
 public class JacksonWrapper implements Wrapper {
 
     private final static ObjectMapper JSON = new ObjectMapper();
-
 
     public static JsonElement wrap(JsonNode el) {
         if (el == null || el.isNull()) {
@@ -38,7 +38,10 @@ public class JacksonWrapper implements Wrapper {
     @Override
     public JsonElement parse(String json) {
         try {
-            return wrap(JSON.readTree(json));
+            JsonParser parser = JSON.getJsonFactory().createJsonParser(json);
+            parser.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
+            parser.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+            return wrap(parser.readValueAsTree());
         } catch (JsonProcessingException e) {
             throw new JsonWrapperException("Failed to parse JSON", e);
         } catch (IOException e) {
@@ -49,7 +52,7 @@ public class JacksonWrapper implements Wrapper {
 
     @Override
     public boolean accepts(Object o) {
-        return o == null || o instanceof JacksonJsonElement || o instanceof org.codehaus.jackson.JsonNode;
+        return o instanceof JacksonJsonElement || o instanceof org.codehaus.jackson.JsonNode;
     }
 
 

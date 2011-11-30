@@ -45,12 +45,22 @@ import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
  */
 public class JsonPatch {
 
+    // by providing null as hint we default to GSON.
+    private static Object hint = null;
+
+    
+    // For testing
+    static void setHint(Object hint) {
+
+        JsonPatch.hint = hint;
+
+    }
 
     public static String apply(String orig, String patch) throws IllegalArgumentException {
 
         // by providing null as hint we default to GSON.
-        JsonElement origEl = JsonWrapperFactory.parse(orig, null);
-        JsonElement patchEl = JsonWrapperFactory.parse(patch, null);
+        JsonElement origEl = JsonWrapperFactory.parse(orig, JsonPatch.hint);
+        JsonElement patchEl = JsonWrapperFactory.parse(patch, JsonPatch.hint);
 
         apply(origEl, patchEl);
 
