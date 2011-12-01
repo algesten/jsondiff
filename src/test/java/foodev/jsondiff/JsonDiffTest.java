@@ -17,36 +17,36 @@ import com.google.gson.JsonObject;
 @RunWith(value = Parameterized.class)
 public class JsonDiffTest {
 
-    
+
     public JsonDiffTest(Object hint) {
 
         JsonDiff.setHint(hint);
 
     }
 
-    
+
     @Parameters
     public static Collection<Object[]> hints() {
 
         Object[][] data = new Object[][] { { new JsonObject() }, { NullNode.getInstance() } };
         return Arrays.asList(data);
 
-    }   
+    }
 
 
     @Before
     public void noSetup() {
-        
-      JsonPatch.setHint(null);
-      
+
+        JsonPatch.setHint(null);
+
     }
 
 
     @After
     public void noTearDown() {
-        
+
         JsonPatch.setHint(null);
-      
+
     }
 
 
@@ -620,6 +620,22 @@ public class JsonDiffTest {
         Assert.assertEquals(diff, d);
 
         String p = JsonPatch.apply(from, diff);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    @Test
+    public void testArrayObjectsRemoveAfterMultpleAdd() {
+
+        String fr = "{a:[{c:0},{c:1},{c:2},{c:3},{c:4}]}";
+        String to = "{a:[{e:0},{c:0},{c:2},{e:2},{c:3},{e:3}]}";
+        String diff = "{\"a[+0]\":{\"e\":0},\"-a[1]\":0,\"a[+3]\":{\"e\":2},\"-a[4]\":0,\"a[+5]\":{\"e\":3}}";
+
+        String d = JsonDiff.diff(fr, to);
+        Assert.assertEquals(diff, d);
+
+        String p = JsonPatch.apply(fr, diff);
         Assert.assertEquals(to, p);
 
     }
