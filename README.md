@@ -52,10 +52,10 @@ would yield a changed object as:
     "~key[+4]":{ "sub": "array add"} // object added after 3 becoming the new 4 (current 4 pushed right)
     "-key[4]:  0                     // removing element 4 current 5 becoming new 4 (value is ignored)
 
-#### Instruction order ####
+### Instruction order ###
 
 For arrays the instruction order matter. Array insert and deletions will affect the index offset for each other and 
-subsequent operations. Regardless of operation order in the json object passed as diff, the entries are sorted as:
+subsequent instructions. Regardless of instruction order in the json object passed as diff, the entries are sorted as:
 
 1. Merge (`~a[n]`)
 2. Set (`a[n]`)
