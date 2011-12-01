@@ -625,6 +625,7 @@ public class JsonDiffTest {
     }
 
 
+    // Issue #5
     @Test
     public void testArrayObjectsRemoveAfterMultpleAdd() {
 
