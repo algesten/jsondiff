@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -146,7 +147,6 @@ public class JsonDiff {
         JzonObject from = (JzonObject) fromEl;
         JzonObject to = (JzonObject) toEl;
 
-
         Root fromRoot = new Root();
         Root toRoot = new Root();
 
@@ -163,112 +163,94 @@ public class JsonDiff {
 
         List<IncavaEntry> diff = idiff.diff();
 
-        // quick lookups to check whether a key/index has been added or deleted
-        // these hash codes are "index position aware" which means there's no risk
-        // of confusing position independent array positions.
-        HashSet<Integer> deletions = new HashSet<Integer>();
-        HashSet<Integer> additions = new HashSet<Integer>();
-
-        for (IncavaEntry d : diff) {
-            for (int i = d.getDeletedStart(), n = d.getDeletedEnd(); i <= n; i++) {
-                deletions.add(fromLeaves.get(i).parent.doHash(true));
-            }
-            for (int i = d.getAddedStart(), n = d.getAddedEnd(); i <= n; i++) {
-                additions.add(toLeaves.get(i).parent.doHash(true));
-            }
-        }
-
         adjustArrayMutationBoundaries(diff, fromLeaves, toLeaves);
-        adjustArrayDeletion(diff, fromLeaves, toArrs, additions);
-        adjustArrayInsertion(diff, toLeaves, fromArrs, deletions);
 
-        // rebuild since adjustArrayInsertion/DeletionIndexes alters indexed hash.
-        deletions.clear();
-        additions.clear();
-        for (IncavaEntry d : diff) {
-            for (int i = d.getDeletedStart(), n = d.getDeletedEnd(); i <= n; i++) {
-                deletions.add(fromLeaves.get(i).parent.doHash(true));
-            }
-            for (int i = d.getAddedStart(), n = d.getAddedEnd(); i <= n; i++) {
-                additions.add(toLeaves.get(i).parent.doHash(true));
-            }
-        }
+        ArrayList<Leaf> mutations = buildMutationList(diff, fromLeaves, toLeaves);
+
+        adjustArrayIndexes(mutations, fromArrs, toArrs);
 
         JzonObject patch = JsonWrapperFactory.createJsonObject(from);
 
-        buildPatch(patch, diff, fromLeaves, toLeaves, additions, deletions);
+        for (Leaf leaf : mutations) {
+            leaf.apply(patch);
+        }
 
         return patch;
 
     }
 
 
-    private static void buildPatch(JzonObject patch, List<IncavaEntry> diff,
-            ArrayList<Leaf> from, ArrayList<Leaf> to, HashSet<Integer> additions, HashSet<Integer> deletions) {
+    // goes through the IncavaEntry and build the corresponding list of LEAF
+    // the set will remove any add + delete leaving just the add instruction.
+    private static ArrayList<Leaf> buildMutationList(List<IncavaEntry> diff, ArrayList<Leaf> fromLeaves,
+            ArrayList<Leaf> toLeaves) {
 
-        // holds added instructions to check for double additions (where a deep addition is
-        // superfluous since a parent has been added). This also holds hash codes where
-        // index is used.
-        HashSet<Integer> added = new HashSet<Integer>();
+        LinkedHashMap<Integer, Leaf> mutations = new LinkedHashMap<Integer, Leaf>();
 
-        for (IncavaEntry d : diff) {
+        for (IncavaEntry ent : diff) {
 
-            if (d.getDeletedEnd() >= 0) {
+            if (ent.getAddedStart() >= 0 && ent.getAddedEnd() >= 0) {
 
-                int i = d.getDeletedStart();
+                // additions first since deletions may hash to same position,
+                // and will in that case not be added.
+                for (int i = ent.getAddedStart(), n = ent.getAddedEnd(); i <= n; i++) {
 
-                Leaf prev = from.get(i);
+                    Leaf add = toLeaves.get(i);
 
-                // if something is in added, it's a change, we don't
-                // do delete + add for change, just add
-                if (!selfOrAncestor(additions, prev.parent, true)) {
-
-                    // not array, just remove
-                    addInstruction(patch, prev, true, false);
-
-                }
-
-                for (i = i + 1; i <= d.getDeletedEnd(); i++) {
-
-                    Leaf cur = from.get(i);
-
-                    if (cur.hasAncestor(prev.parent)) {
-
-                        // ignore since the whole parent is deleted/changed.
-
-                    } else if (!selfOrAncestor(additions, cur.parent, true)) {
-
-                        // add remove instruction
-                        addInstruction(patch, cur, true, false);
-
-                        prev = cur;
-
+                    // if any parent has been added already,
+                    // this node is irrelevant
+                    if (anyParent(mutations, add.parent)) {
+                        continue;
                     }
 
-                }
+                    // right now we assume it's an insertion, but going through
+                    // deletions we may change this to SET.
+                    add.oper = Oper.INSERT;
 
+                    // get an indexed hash of the parent node since
+                    // we are trying to match up indexed positions
+                    // in add/remove
+                    int hash = add.parent.doHash(true);
+
+                    mutations.put(hash, add);
+
+                }
             }
 
-            if (d.getAddedEnd() >= 0) {
+        }
 
-                int i = d.getAddedStart();
+        for (IncavaEntry ent : diff) {
 
-                Leaf prev = to.get(i);
-                if (!selfOrAncestor(added, prev.parent, true)) {
-                    addInstruction(patch, prev, selfOrAncestor(deletions, prev.parent, false), true);
-                    added.add(prev.parent.doHash(true));
-                }
+            if (ent.getDeletedStart() >= 0 && ent.getDeletedEnd() >= 0) {
 
-                for (i = i + 1; i <= d.getAddedEnd(); i++) {
+                // go through deletions and add only those that don't have a corresponding addition.
+                for (int i = ent.getDeletedStart(), n = ent.getDeletedEnd(); i <= n; i++) {
 
-                    Leaf cur = to.get(i);
+                    Leaf del = fromLeaves.get(i);
 
-                    if (cur.hasAncestor(prev.parent)) {
-                        // ignore since the whole parent has been added.
-                    } else if (!selfOrAncestor(added, cur.parent, true)) {
-                        addInstruction(patch, cur, selfOrAncestor(deletions, cur.parent, false), true);
-                        added.add(cur.parent.doHash(true));
-                        prev = cur;
+                    // indexed hash of parent
+                    int hash = del.parent.doHash(true);
+
+                    // the hash will be matching if an element
+                    // is both deleted/added
+                    Leaf add = mutations.get(hash);
+
+                    if (add == null) {
+
+                        // if any parent has been added/removed already,
+                        // this node is irrelevant
+                        if (anyParent(mutations, del.parent)) {
+                            continue;
+                        }
+
+                        del.oper = Oper.DELETE;
+                        mutations.put(hash, del);
+
+                    } else {
+
+                        // both added and deleted, change to SET.
+                        add.oper = Oper.SET;
+
                     }
 
                 }
@@ -277,99 +259,22 @@ public class JsonDiff {
 
         }
 
+        return new ArrayList<Leaf>(mutations.values());
+
     }
 
 
-    private static boolean selfOrAncestor(HashSet<Integer> set, Node node, boolean adjusted) {
+    private static boolean anyParent(LinkedHashMap<Integer, Leaf> mutations, Node node) {
 
         if (node == null) {
             return false;
         }
 
-        if (set.contains(node.doHash(true))) {
+        if (mutations.containsKey(node.doHash(true))) {
             return true;
         }
 
-        return selfOrAncestor(set, node.parent, adjusted);
-
-    }
-
-
-    private static void addInstruction(JzonObject patch, Leaf leaf, boolean isInDeleted, boolean isInAdded) {
-
-        ArrayList<Node> path = leaf.toPath();
-        JzonObject cur = patch;
-        StringBuilder keyBld = new StringBuilder();
-
-        int last = path.size() - 1;
-
-        for (int i = 0; i < last; i++) {
-
-            buildKey(keyBld, path, i);
-            keyBld.insert(0, '~');
-
-            String key = keyBld.toString();
-
-            JzonObject tmp;
-            if (cur.has(key)) {
-                tmp = (JzonObject) cur.get(key);
-            } else {
-                tmp = JsonWrapperFactory.createJsonObject(patch);
-                cur.add(key, tmp);
-            }
-
-            cur = tmp;
-
-        }
-
-        buildKey(keyBld, path, last);
-
-        if (isInAdded) {
-
-            if (!isInDeleted) {
-
-                ObjNode o = (ObjNode) path.get(last);
-
-                if (o.subindex != null) {
-
-                    // not in deleted and has an array specifier,
-                    // it's an inserted array member
-                    int p = keyBld.lastIndexOf("[");
-                    keyBld.insert(p + 1, '+');
-
-                }
-
-            }
-
-            cur.add(keyBld.toString(), leaf.val);
-
-
-        } else if (isInDeleted) {
-
-            keyBld.insert(0, '-');
-            cur.addProperty(keyBld.toString(), 0);
-
-        }
-
-    }
-
-
-    private static void buildKey(StringBuilder key, ArrayList<Node> path, int i) {
-
-        key.delete(0, key.length());
-
-        ObjNode o = (ObjNode) path.get(i);
-
-        key.append(o.key);
-
-        ArrNode a = o.subindex;
-
-        while (a != null) {
-            key.append('[');
-            key.append(a.index);
-            key.append(']');
-            a = a.subindex;
-        }
+        return anyParent(mutations, node.parent);
 
     }
 
@@ -380,12 +285,12 @@ public class JsonDiff {
 
         if (el.isJsonObject()) {
 
-            Set<Entry<String, JzonElement>> memb = new TreeSet<Entry<String, JzonElement>>(ENTRY_COMPARATOR);
+            Set<Entry<String, JzonElement>> memb = new TreeSet<Entry<String, JzonElement>>(OBJECT_KEY_COMPARATOR);
             memb.addAll(((JzonObject) el).entrySet());
 
             for (Entry<String, JzonElement> e : memb) {
 
-                ObjNode newParent = new ObjNode(parent, e.getKey());
+                ObjNode newParent = new ObjNode(parent, el, e.getKey());
                 findLeaves(newParent, e.getValue(), leaves, arrs);
 
             }
@@ -398,9 +303,9 @@ public class JsonDiff {
 
                 ArrNode newParent = new ArrNode(parent, el, i);
 
-                if (arrs != null) {
-                    arrs.put(newParent.doHash(true), newParent);
-                }
+                // this array saves a reference to all arrnodes
+                // which is used to adjust arr node indexes.
+                arrs.put(newParent.doHash(true), newParent);
 
                 findLeaves(newParent, arr.get(i), leaves, arrs);
 
@@ -434,9 +339,11 @@ public class JsonDiff {
                 Leaf beforeFirst = fromLeaves.get(ent.getDeletedStart() - 1);
                 Leaf last = fromLeaves.get(ent.getDeletedEnd());
 
-                if (beforeFirst.parent instanceof ArrNode && first.parent instanceof ObjNode &&
-                        last.parent instanceof ArrNode
-                        && ((ArrNode) beforeFirst.parent).el == ((ArrNode) last.parent).el) {
+                boolean beforeIsSameArr = last.parent instanceof ArrNode && beforeFirst.parent.el == last.parent.el;
+
+                if (beforeFirst.parent instanceof ArrNode
+                        && first.parent instanceof ObjNode
+                        && beforeIsSameArr) {
 
                     ent = new IncavaEntry(ent.getDeletedStart() - 1, ent.getDeletedEnd() - 1,
                             ent.getAddedStart(), ent.getAddedEnd());
@@ -453,9 +360,11 @@ public class JsonDiff {
                 Leaf beforeFirst = toLeaves.get(ent.getAddedStart() - 1);
                 Leaf last = toLeaves.get(ent.getAddedEnd());
 
-                if (beforeFirst.parent instanceof ArrNode && first.parent instanceof ObjNode &&
-                        last.parent instanceof ArrNode
-                        && ((ArrNode) beforeFirst.parent).el == ((ArrNode) last.parent).el) {
+                boolean beforeIsSameArr = last.parent instanceof ArrNode && beforeFirst.parent.el == last.parent.el;
+
+                if (beforeFirst.parent instanceof ArrNode
+                        && first.parent instanceof ObjNode
+                        && beforeIsSameArr) {
 
                     ent = new IncavaEntry(ent.getDeletedStart(), ent.getDeletedEnd(),
                             ent.getAddedStart() - 1, ent.getAddedEnd() - 1);
@@ -471,126 +380,53 @@ public class JsonDiff {
     }
 
 
-    // when deleting elements in an array, the indexes in subsequent cells differ between from/to
-    // this causes problems when mutations happens after the deleted index. Issue #3.
-    // this method adjusts the toLeaves to ensure the array indexes are the same as that of
-    // the fromArray regardless of deletions.
-    private static void adjustArrayDeletion(List<IncavaEntry> diff, ArrayList<Leaf> fromLeaves,
-            HashMap<Integer, ArrNode> toArrs, HashSet<Integer> additions) {
+    private static void adjustArrayIndexes(ArrayList<Leaf> mutations,
+            HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs) {
 
+        for (Leaf l : mutations) {
 
-        for (IncavaEntry ent : diff) {
+            if (l.parent instanceof ArrNode) {
 
-            if (ent.getDeletedStart() >= 0 && ent.getDeletedEnd() >= 0) {
+                ArrNode cur = (ArrNode) l.parent;
 
-                for (int cur = ent.getDeletedStart(), n = ent.getDeletedEnd(); cur <= n; cur++) {
+                if (l.oper == Oper.INSERT) {
 
-                    Leaf leaf = fromLeaves.get(cur);
+                    // used to make hash codes.
+                    ArrNode clone = new ArrNode(cur.parent, cur.el, cur.index);
 
-                    if (leaf.parent instanceof ArrNode) {
+                    ArrNode adjust;
 
-                        ArrNode first = (ArrNode) leaf.parent;
+                    while ((adjust = fromArrs.get(clone.doHash(true))) != null) {
+                        adjust.index++;
+                        clone.index++;
+                    }
 
-                        // don't adjust delete + add = set entries
-                        if (additions.contains(first.doHash(true))) {
-                            continue;
-                        }
+                } else if (l.oper == Oper.DELETE) {
 
-                        // clone is used just to create a hash code for looking
-                        // up the real node from toArrs.
-                        ArrNode clone = new ArrNode(first.parent, first.el, 0);
+                    // used to make hash codes.
+                    ArrNode clone = new ArrNode(cur.parent, cur.el, cur.index);
 
-                        int i = first.index;
+                    ArrNode adjust;
 
-                        while (true) {
-
-                            clone.index = i++;
-
-                            ArrNode adjust = toArrs.get(clone.doHash(true));
-
-                            if (adjust == null) {
-                                break;
-                            }
-
-                            // adjust forward one
-                            adjust.index++;
-
-                        }
-
+                    while ((adjust = toArrs.get(clone.doHash(true))) != null) {
+                        adjust.index++;
+                        clone.index++;
                     }
 
                 }
 
             }
+
         }
 
     }
 
 
-    // when inserting elements in an array, the indexes in subsequent cells differ between from/to
-    // this causes problems when mutations happens after the inserted index. Related to issue #3.
-    // this method adjusts the fromLeaves to ensure the array indexes are adjusted for every insertion.
-    private static void adjustArrayInsertion(List<IncavaEntry> diff, ArrayList<Leaf> toLeaves,
-            HashMap<Integer, ArrNode> fromArrs, HashSet<Integer> deletions) {
-
-
-        for (IncavaEntry ent : diff) {
-
-            if (ent.getAddedStart() >= 0 && ent.getAddedEnd() >= 0) {
-
-                for (int cur = ent.getAddedStart(), n = ent.getAddedEnd(); cur <= n; cur++) {
-
-                    Leaf leaf = toLeaves.get(cur);
-
-                    if (leaf.parent instanceof ArrNode) {
-
-                        ArrNode first = (ArrNode) leaf.parent;
-
-                        // don't adjust delete + add = set entries
-                        if (deletions.contains(first.doHash(true))) {
-                            continue;
-                        }
-
-                        // clone is used just to create a hash code for looking
-                        // up the real node from toArrs.
-                        ArrNode clone = new ArrNode(first.parent, first.el, 0);
-
-                        int i = first.index;
-
-                        while (true) {
-
-                            clone.index = i++;
-
-                            ArrNode adjust = fromArrs.get(clone.doHash(true));
-
-                            if (adjust == null) {
-                                break;
-                            }
-
-                            // adjust forward one
-                            adjust.index++;
-
-                        }
-
-                    }
-
-                }
-
-            }
-        }
-
+    private static enum Oper {
+        INSERT,
+        DELETE,
+        SET
     }
-
-
-    private static Comparator<Entry<String, JzonElement>> ENTRY_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
-
-        @Override
-        public int compare(Entry<String, JzonElement> o1, Entry<String, JzonElement> o2) {
-
-            return o1.getKey().compareTo(o2.getKey());
-
-        }
-    };
 
 
     private static class Leaf implements Comparable<Leaf> {
@@ -598,7 +434,7 @@ public class JsonDiff {
         final Node parent;
         final JzonElement val;
         Integer hash;
-        ArrayList<Node> path;
+        Oper oper;
 
 
         Leaf(Node parent, JzonElement val) {
@@ -607,46 +443,85 @@ public class JsonDiff {
         }
 
 
-        public ArrayList<Node> toPath() {
-            if (path != null) {
-                return path;
+        void apply(JzonObject patch) {
+
+            // collect all parent nodes to this leaf.
+            LinkedList<Node> path = new LinkedList<Node>();
+            Node n = parent;
+            while (n != null) {
+                path.add(n);
+                n = n.parent;
             }
+            // reverse to get root first
+            Collections.reverse(path);
 
-            ArrayList<Node> tmp = new ArrayList<Node>();
-            Node cur = parent;
+            // remove root
+            path.pop();
 
-            tmp.add(cur);
-            while (!(cur.parent instanceof Root)) {
-                cur = cur.parent;
-                tmp.add(cur);
-            }
-            Collections.reverse(tmp);
+            StringBuilder key = new StringBuilder();
 
-            for (int i = 0; i < tmp.size(); i++) {
+            JzonObject cur = patch;
 
-                ObjNode o = (ObjNode) tmp.get(i);
+            while (!path.isEmpty()) {
 
-                int j = i + 1;
-                if (j < tmp.size() && tmp.get(j) instanceof ArrNode) {
-                    o.subindex = (ArrNode) tmp.get(j);
-                    ArrNode a = o.subindex;
-                    tmp.remove(j);
-                    while (j < tmp.size() && tmp.get(j) instanceof ArrNode) {
-                        a.subindex = (ArrNode) tmp.get(j);
-                        a = a.subindex;
-                        tmp.remove(j);
+                // clear builder
+                key.delete(0, key.length());
+
+                // ought to be an ObjNode
+                ObjNode on = (ObjNode) path.pop();
+
+                on.toPathEl(key);
+
+                // add on any array specifications
+                while (!path.isEmpty() && path.peek() instanceof ArrNode) {
+                    path.pop().toPathEl(key);
+                }
+
+                if (path.isEmpty()) {
+
+                    switch (oper) {
+                    case DELETE:
+                        key.insert(0, "-");
+                        cur.addProperty(key.toString(), 0);
+                        break;
+                    case INSERT:
+                        int index = key.lastIndexOf("[");
+                        if (index >= 0) {
+                            key.insert(index + 1, "+");
+                        }
+                    case SET:
+                        cur.add(key.toString(), val);
+                        break;
                     }
+
+                } else {
+
+                    // continue object traversal
+
+                    // if we're about to traverse, it's impossible that
+                    // the entire node has been added, in which case it must
+                    // be an object merge.
+
+                    key.insert(0, "~");
+
+                    String keyStr = key.toString();
+
+                    if (cur.has(keyStr)) {
+
+                        cur = (JzonObject) cur.get(keyStr);
+
+                    } else {
+
+                        JzonObject next = JsonWrapperFactory.createJsonObject(patch);
+                        cur.add(keyStr, next);
+                        cur = next;
+
+                    }
+
                 }
 
             }
 
-            return tmp;
-
-        }
-
-
-        public boolean hasAncestor(Node anc) {
-            return parent == anc || parent.hasAncestor(anc);
         }
 
 
@@ -676,26 +551,25 @@ public class JsonDiff {
 
         @Override
         public String toString() {
-            return "LEAF<" + val + "#" + hashCode() + ">\n";
+            return "LEAF<" + oper + "_" + val + "_" + hashCode() + ">\n";
         }
-
     }
 
 
     private static abstract class Node {
 
         final Node parent;
+        final JzonElement el;
         int hash = -1;
 
 
-        Node(Node parent) {
+        Node(Node parent, JzonElement el) {
+            this.el = el;
             this.parent = parent;
         }
 
 
-        public boolean hasAncestor(Node anc) {
-            return parent == anc || parent.hasAncestor(anc);
-        }
+        abstract void toPathEl(StringBuilder bld);
 
 
         @Override
@@ -717,12 +591,16 @@ public class JsonDiff {
 
         final String key;
 
-        ArrNode subindex;
 
-
-        ObjNode(Node parent, String key) {
-            super(parent);
+        ObjNode(Node parent, JzonElement el, String key) {
+            super(parent, el);
             this.key = key;
+        }
+
+
+        @Override
+        void toPathEl(StringBuilder bld) {
+            bld.append(key);
         }
 
 
@@ -744,16 +622,20 @@ public class JsonDiff {
 
     private static class ArrNode extends Node {
 
-        final JzonElement el;
         int index;
-
-        ArrNode subindex;
 
 
         ArrNode(Node parent, JzonElement el, int index) {
-            super(parent);
-            this.el = el;
+            super(parent, el);
             this.index = index;
+        }
+
+
+        @Override
+        void toPathEl(StringBuilder bld) {
+            bld.append("[");
+            bld.append(index);
+            bld.append("]");
         }
 
 
@@ -780,7 +662,12 @@ public class JsonDiff {
 
 
         Root() {
-            super(null);
+            super(null, null);
+        }
+
+
+        @Override
+        void toPathEl(StringBuilder bld) {
         }
 
 
@@ -791,16 +678,22 @@ public class JsonDiff {
 
 
         @Override
-        public boolean hasAncestor(Node anc) {
-            return false;
-        }
-
-
-        @Override
         public String toString() {
             return "root";
         }
 
     }
+
+
+    private static Comparator<Entry<String, JzonElement>> OBJECT_KEY_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
+
+        @Override
+        public int compare(Entry<String, JzonElement> o1, Entry<String, JzonElement> o2) {
+
+            return o1.getKey().compareTo(o2.getKey());
+
+        }
+    };
+
 
 }
