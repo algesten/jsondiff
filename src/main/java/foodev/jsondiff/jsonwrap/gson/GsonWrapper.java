@@ -44,7 +44,7 @@ public class GsonWrapper implements Wrapper {
 
     @Override
     public boolean accepts(Object o) {
-        return o == null || o instanceof GsonJsonElement || o instanceof JsonElement;
+        return o instanceof GsonJsonElement || o instanceof JsonElement;
     }
 
 

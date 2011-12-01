@@ -1,13 +1,20 @@
 package foodev.jsondiff.jsonwrap;
 
 import foodev.jsondiff.jsonwrap.gson.GsonWrapper;
+import foodev.jsondiff.jsonwrap.jackson.JacksonWrapper;
 
 
+/**
+ * Internal wrapper helper.
+ * 
+ * @author Martin Algesten
+ * 
+ */
 public class JsonWrapperFactory {
 
-    private final static Wrapper gsonWrapper = new GsonWrapper();
-    private final static Wrapper jacksonWrapper;
-
+    private final static Wrapper gsonWrapper = buildGsonWrapper();
+    
+    private final static Wrapper jacksonWrapper = buildJacksonWrapper();
 
     public static JzonElement parse(String json, Object hint) {
         return selectWrapper(hint).parse(json);
@@ -34,38 +41,32 @@ public class JsonWrapperFactory {
 
 
     private static Wrapper selectWrapper(Object hint) {
-        if (hint == null || gsonWrapper.accepts(hint)) {
+        if (gsonWrapper != null && (hint == null || gsonWrapper.accepts(hint))) {
             return gsonWrapper;
-        } else if (jacksonWrapper != null && jacksonWrapper.accepts(hint)) {
+        } else if (jacksonWrapper != null && (hint == null || jacksonWrapper.accepts(hint))) {
             return jacksonWrapper;
         } else {
-            throw new IllegalStateException("No json wrapper accepts: " + hint.getClass().getName());
+            throw new IllegalStateException("No json wrapper accepts: " + (hint == null ? hint : hint.getClass().getName()));
         }
     }
 
 
-    static {
+    private static Wrapper buildGsonWrapper() {
+        try {
+            Class.forName("com.google.gson.JsonElement");
+            return new GsonWrapper();
+        } catch (ClassNotFoundException cnfe) {
+            return null;
+        }
+    }
 
-        boolean hasJackson = false;
-        Wrapper maybe = null;
-
+    private static Wrapper buildJacksonWrapper() {
         try {
             Class.forName("org.codehaus.jackson.JsonNode");
-            hasJackson = true;
+            return new JacksonWrapper();
         } catch (ClassNotFoundException cnfe) {
-            hasJackson = false;
+            return null;
         }
-
-        if (hasJackson) {
-            try {
-                maybe = (Wrapper)
-                        Class.forName("foodev.jsondiff.jsonwrap.jackson.JacksonWrapper").newInstance();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        jacksonWrapper = maybe;
-
     }
+
 }
