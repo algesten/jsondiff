@@ -642,8 +642,8 @@ public class JsonDiffTest {
     public void testArrayObjectsRemoveAfterMultpleAdd() {
 
         String fr = "{a:[{c:0},{c:1},{c:2},{c:3},{c:4}]}";
-        String to = "{a:[{e:0},{c:0},{c:2},{e:2},{c:3},{e:3}]}";
-        String diff = "{\"a[+0]\":{\"e\":0},\"a[+3]\":{\"e\":2},\"~a[4]\":{\"e\":3},\"-a[1]\":0,\"~a[4]\":{\"-c\":0}}";
+        String to = "{\"a\":[{\"e\":0},{\"c\":0},{\"c\":2},{\"e\":2},{\"c\":3,\"d\":3},{\"e\":3}]}";
+        String diff = "{\"a[+0]\":{\"e\":0},\"a[+4]\":{\"e\":2},\"~a[3]\":{\"d\":3},\"~a[4]\":{\"e\":3,\"-c\":0},\"-a[2]\":0}";
 
         String d = JsonDiff.diff(fr, to);
         Assert.assertEquals(diff, d);
