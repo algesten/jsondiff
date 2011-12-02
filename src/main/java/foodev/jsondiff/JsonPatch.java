@@ -158,7 +158,7 @@ public class JsonPatch {
 
                         obj = arr.get(idx);
 
-                    } else if (instr.oper != '-') {
+                    } else if (instr.oper != Oper.DELETE) {
 
                         JzonArray tmp = JsonWrapperFactory.createJsonArray(orig);
                         grew = arrEnsureLength(tmp, idx);
@@ -187,7 +187,7 @@ public class JsonPatch {
             // obj should now point to the element
             // arr should be the last array object
 
-            if (instr.oper == '~') {
+            if (instr.oper == Oper.MERGE) {
 
                 // looking out for objects and arrays since those
                 // are the only two being merged.
@@ -203,7 +203,7 @@ public class JsonPatch {
 
                 }
 
-            } else if (instr.oper == '-') {
+            } else if (instr.oper == Oper.DELETE) {
 
                 if (arr != null) {
 
@@ -223,7 +223,7 @@ public class JsonPatch {
             // initial '~' and '-' has been stripped and dealt with
             if (arr != null) {
 
-                if (instr.isArrayInsert() && !grew) {
+                if (instr.oper == Oper.INSERT && !grew) {
 
                     arr.insert(lastIndex, instr.el);
 
@@ -339,17 +339,27 @@ public class JsonPatch {
     }
 
 
+    private enum Oper {
+        MERGE(1),
+        SET(2),
+        INSERT(3),
+        DELETE(4);
+
+        final int sort;
+
+
+        Oper(int sort) {
+            this.sort = sort;
+        }
+    }
+
+
     private static class Instruction implements Comparable<Instruction> {
 
         final String orig;
         final String key;
         final ArrayList<Integer> index;
-
-        // 7e ~ merge
-        // 7c | set
-        // 2e . insert
-        // 2d - del
-        final char oper;
+        final Oper oper;
         final JzonElement el;
 
 
@@ -375,43 +385,38 @@ public class JsonPatch {
 
             switch (str.charAt(0)) {
             case '-':
-                oper = '-';
+                oper = Oper.DELETE;
                 str = str.substring(1);
                 break;
             case '~':
-                oper = '~';
+                oper = Oper.MERGE;
                 str = str.substring(1);
                 break;
             default:
                 if (arrayInsert) {
-                    oper = '.'; // insert
+                    oper = Oper.INSERT;
                 } else {
-                    oper = '|'; // set
+                    oper = Oper.SET;
                 }
             }
 
             this.key = str;
 
-            if (oper == '~' && arrayInsert) {
+            if (oper == Oper.MERGE && arrayInsert) {
                 throw new IllegalArgumentException("~ at the same time as array insertion (nonsense): " + orig);
             }
 
-            if (oper == '-' && arrayInsert) {
+            if (oper == Oper.DELETE && arrayInsert) {
                 throw new IllegalArgumentException("- at the same time as array insertion (nonsense): " + orig);
             }
 
         }
 
 
-        boolean isArrayInsert() {
-            return oper == '.';
-        }
-
-
         @Override
         public int compareTo(Instruction o) {
 
-            int i = (int) o.oper - (int) oper;
+            int i = oper.sort - o.oper.sort;
 
             if (i == 0) {
 
@@ -419,7 +424,7 @@ public class JsonPatch {
 
                 if (i == 0) {
 
-                    boolean ascending = oper != '-';
+                    boolean ascending = oper != Oper.DELETE;
                     i = compareArrays(ascending, index, o.index);
 
                     if (i == 0) {
