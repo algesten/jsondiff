@@ -310,4 +310,25 @@ public class JsonPatchTest {
 
     }
 
+    // test for Issue #7 but how can it happen to start off with?
+    // Thanks to DrLansing for finding the problem.
+    @Test
+    public void testCompareArrays() {
+
+        Assert.assertEquals(0, JsonPatch.compareArrays(true, null, null));
+        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1), null));
+        Assert.assertEquals(1, JsonPatch.compareArrays(true, null, Arrays.asList(1)));
+        
+        Assert.assertEquals(0, JsonPatch.compareArrays(true, Arrays.asList(1,2,3), Arrays.asList(1,2,3)));
+        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1,2), Arrays.asList(1,2,3)));
+        Assert.assertEquals(1, JsonPatch.compareArrays(true, Arrays.asList(1,2,3), Arrays.asList(1,2)));
+
+        Assert.assertEquals(1, JsonPatch.compareArrays(true, Arrays.asList(1,3), Arrays.asList(1,2)));
+        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1,2), Arrays.asList(1,3)));
+
+        Assert.assertEquals(-1, JsonPatch.compareArrays(false, Arrays.asList(1,3), Arrays.asList(1,2)));
+        Assert.assertEquals(1, JsonPatch.compareArrays(false, Arrays.asList(1,2), Arrays.asList(1,3)));
+
+    }
+
 }

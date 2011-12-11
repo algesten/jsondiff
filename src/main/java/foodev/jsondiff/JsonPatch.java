@@ -1,6 +1,7 @@
 package foodev.jsondiff;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
 
@@ -9,10 +10,10 @@ import org.codehaus.jackson.node.ObjectNode;
 import com.google.gson.JsonObject;
 
 import foodev.jsondiff.jsonwrap.JsonWrapperException;
+import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
 import foodev.jsondiff.jsonwrap.JzonArray;
 import foodev.jsondiff.jsonwrap.JzonElement;
 import foodev.jsondiff.jsonwrap.JzonObject;
-import foodev.jsondiff.jsonwrap.JsonWrapperFactory;
 
 /**
  * Patch tool for differences as produced by {@link JsonDiff#diff(String, String)}.
@@ -307,8 +308,8 @@ public class JsonPatch {
     }
 
 
-    private static int compareArrays(boolean ascending,
-            ArrayList<Integer> l1, ArrayList<Integer> l2) {
+    static int compareArrays(boolean ascending,
+            List<Integer> l1, List<Integer> l2) {
 
         if (l1 == null && l2 != null) {
             return 1;
@@ -334,6 +335,7 @@ public class JsonPatch {
             if (d != 0) {
                 return d;
             }
+            i++;
         }
 
     }
@@ -425,6 +427,7 @@ public class JsonPatch {
                 if (i == 0) {
 
                     boolean ascending = oper != Oper.DELETE;
+                    
                     i = compareArrays(ascending, index, o.index);
 
                     if (i == 0) {
