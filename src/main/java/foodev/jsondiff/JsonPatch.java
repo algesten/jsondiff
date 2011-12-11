@@ -418,6 +418,11 @@ public class JsonPatch {
         @Override
         public int compareTo(Instruction o) {
 
+            // fix for Issue #8, thanks to DrLansing for reporting it.
+            if (o == this) {
+                return 0;
+            }
+            
             int i = oper.sort - o.oper.sort;
 
             if (i == 0) {
@@ -427,7 +432,7 @@ public class JsonPatch {
                 if (i == 0) {
 
                     boolean ascending = oper != Oper.DELETE;
-                    
+
                     i = compareArrays(ascending, index, o.index);
 
                     if (i == 0) {
