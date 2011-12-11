@@ -652,5 +652,22 @@ public class JsonDiffTest {
         Assert.assertEquals(to, p);
 
     }
+    
+    // Issue #7, thanks to DrLansing
+    @Test
+    public void testPotentialEndlessLoopInCompareArrays() {
+
+        String fr = "{\"offset\":\"PT0S\",\"reference\":\"Today\",\"referenceTimeList\":[{\"name\":\"Yesterday\",\"start\":\"Unknown\"},{\"name\":\"Today\",\"offset\":\"P1D\",\"reference\":\"Yesterday\"}]}";
+        String to = "{\"offset\":\"PT0S\",\"reference\":\"Today\",\"referenceTimeList\":[{\"name\":\"Today\",\"start\":\"2010-10-11T17:51:52.204Z\"}]}";
+
+        String d = JsonDiff.diff(fr, to);
+
+        Assert.assertEquals("{\"~referenceTimeList[1]\":{\"start\":\"2010-10-11T17:51:52.204Z\",\"-offset\":0,\"-reference\":0},\"-referenceTimeList[0]\":0}", d);
+     
+        String p = JsonPatch.apply(fr, d);
+        Assert.assertEquals(to, p);
+        
+    }
+    
 
 }
