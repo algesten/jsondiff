@@ -641,30 +641,44 @@ public class JsonDiffTest {
     @Test
     public void testArrayObjectsRemoveAfterMultpleAdd() {
 
-        String fr = "{a:[{c:0},{c:1},{c:2},{c:3},{c:4}]}";
+        String from = "{a:[{c:0},{c:1},{c:2},{c:3},{c:4}]}";
         String to = "{\"a\":[{\"e\":0},{\"c\":0},{\"c\":2},{\"e\":2},{\"c\":3,\"d\":3},{\"e\":3}]}";
         String diff = "{\"a[+0]\":{\"e\":0},\"a[+4]\":{\"e\":2},\"~a[3]\":{\"d\":3},\"~a[4]\":{\"e\":3,\"-c\":0},\"-a[2]\":0}";
 
-        String d = JsonDiff.diff(fr, to);
+        String d = JsonDiff.diff(from, to);
         Assert.assertEquals(diff, d);
 
-        String p = JsonPatch.apply(fr, diff);
+        String p = JsonPatch.apply(from, diff);
         Assert.assertEquals(to, p);
 
     }
     
     // Issue #7, thanks to DrLansing
     @Test
-    public void testPotentialEndlessLoopInCompareArrays() {
+    public void testEndlessLoopInCompareArrays() {
 
-        String fr = "{\"offset\":\"PT0S\",\"reference\":\"Today\",\"referenceTimeList\":[{\"name\":\"Yesterday\",\"start\":\"Unknown\"},{\"name\":\"Today\",\"offset\":\"P1D\",\"reference\":\"Yesterday\"}]}";
+        String from = "{\"offset\":\"PT0S\",\"reference\":\"Today\",\"referenceTimeList\":[{\"name\":\"Yesterday\",\"start\":\"Unknown\"},{\"name\":\"Today\",\"offset\":\"P1D\",\"reference\":\"Yesterday\"}]}";
         String to = "{\"offset\":\"PT0S\",\"reference\":\"Today\",\"referenceTimeList\":[{\"name\":\"Today\",\"start\":\"2010-10-11T17:51:52.204Z\"}]}";
 
-        String d = JsonDiff.diff(fr, to);
+        String d = JsonDiff.diff(from, to);
 
         Assert.assertEquals("{\"~referenceTimeList[1]\":{\"start\":\"2010-10-11T17:51:52.204Z\",\"-offset\":0,\"-reference\":0},\"-referenceTimeList[0]\":0}", d);
      
-        String p = JsonPatch.apply(fr, d);
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+        
+    }
+    
+    // Issue #9, thanks to DrLansing
+    @Test
+    public void testAdjustArrayMutationBoundariesWithObjectDeletion() {
+
+        String from = "{\"a\":[{\"b\":{\"id\":\"id1\"}},{\"b\":{\"id\":\"id2\"}}]}"; 
+        String to = "{\"a\":[{\"b\":{\"id\":\"id2\"}}]}";
+
+        String d = JsonDiff.diff(from, to);
+
+        String p = JsonPatch.apply(from, d);
         Assert.assertEquals(to, p);
         
     }
