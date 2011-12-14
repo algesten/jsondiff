@@ -175,7 +175,8 @@ public class JsonPatch {
 
                     } else {
 
-                        break;
+                        throw new IllegalArgumentException("Array deletion of element that isn't " +
+                                "an array: " + instr.toString());
 
                     }
 
@@ -422,7 +423,7 @@ public class JsonPatch {
             if (o == this) {
                 return 0;
             }
-            
+
             int i = oper.sort - o.oper.sort;
 
             if (i == 0) {

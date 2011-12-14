@@ -17,36 +17,36 @@ import com.google.gson.JsonObject;
 @RunWith(value = Parameterized.class)
 public class JsonPatchTest {
 
-    
+
     public JsonPatchTest(Object hint) {
 
         JsonPatch.setHint(hint);
 
     }
 
-    
+
     @Parameters
     public static Collection<Object[]> hints() {
 
         Object[][] data = new Object[][] { { new JsonObject() }, { NullNode.getInstance() } };
         return Arrays.asList(data);
 
-    }   
+    }
 
 
     @Before
     public void noSetup() {
-        
-      JsonPatch.setHint(null);
-      
+
+        JsonPatch.setHint(null);
+
     }
 
 
     @After
     public void noTearDown() {
-        
+
         JsonPatch.setHint(null);
-      
+
     }
 
 
@@ -310,6 +310,7 @@ public class JsonPatchTest {
 
     }
 
+
     // test for Issue #7 but how did we end up here?
     // Thanks to DrLansing for finding the problem.
     @Test
@@ -318,25 +319,38 @@ public class JsonPatchTest {
         Assert.assertEquals(0, JsonPatch.compareArrays(true, null, null));
         Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1), null));
         Assert.assertEquals(1, JsonPatch.compareArrays(true, null, Arrays.asList(1)));
-        
-        Assert.assertEquals(0, JsonPatch.compareArrays(true, Arrays.asList(1,2,3), Arrays.asList(1,2,3)));
-        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1,2), Arrays.asList(1,2,3)));
-        Assert.assertEquals(1, JsonPatch.compareArrays(true, Arrays.asList(1,2,3), Arrays.asList(1,2)));
 
-        Assert.assertEquals(1, JsonPatch.compareArrays(true, Arrays.asList(1,3), Arrays.asList(1,2)));
-        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1,2), Arrays.asList(1,3)));
+        Assert.assertEquals(0, JsonPatch.compareArrays(true, Arrays.asList(1, 2, 3), Arrays.asList(1, 2, 3)));
+        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1, 2), Arrays.asList(1, 2, 3)));
+        Assert.assertEquals(1, JsonPatch.compareArrays(true, Arrays.asList(1, 2, 3), Arrays.asList(1, 2)));
 
-        Assert.assertEquals(-1, JsonPatch.compareArrays(false, Arrays.asList(1,3), Arrays.asList(1,2)));
-        Assert.assertEquals(1, JsonPatch.compareArrays(false, Arrays.asList(1,2), Arrays.asList(1,3)));
+        Assert.assertEquals(1, JsonPatch.compareArrays(true, Arrays.asList(1, 3), Arrays.asList(1, 2)));
+        Assert.assertEquals(-1, JsonPatch.compareArrays(true, Arrays.asList(1, 2), Arrays.asList(1, 3)));
+
+        Assert.assertEquals(-1, JsonPatch.compareArrays(false, Arrays.asList(1, 3), Arrays.asList(1, 2)));
+        Assert.assertEquals(1, JsonPatch.compareArrays(false, Arrays.asList(1, 2), Arrays.asList(1, 3)));
 
     }
+
 
     // test for Issue #7, this will hang if not fixed.
     // Thanks to DrLansing for finding the problem.
     @Test
     public void testCompareArraysIndirect() {
 
+        // must not hang
         JsonPatch.apply("{a:[[[0]]]}", "{\"a[0][0]\":2,\"a[0][0][0]\":2}");
+
+    }
+
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testBadDeleteAfterReplace() {
+
+        String from = "{a:[1,2]}";
+        String patch = "{a:3, \"-a[0]\": 0}";
+
+        JsonPatch.apply(from, patch);
 
     }
 
