@@ -174,7 +174,9 @@ public class JsonDiff {
         JzonObject patch = JsonWrapperFactory.createJsonObject(from);
 
         for (Leaf leaf : mutations) {
-            leaf.apply(patch);
+            if (leaf.oper != null) {
+                leaf.apply(patch);
+            }
         }
 
         return patch;
@@ -340,42 +342,26 @@ public class JsonDiff {
 
             if (ent.getDeletedStart() > 0 && ent.getDeletedEnd() > 0) {
 
-                Leaf first = fromLeaves.get(ent.getDeletedStart());
-                Leaf beforeFirst = fromLeaves.get(ent.getDeletedStart() - 1);
-                Leaf last = fromLeaves.get(ent.getDeletedEnd());
+                int adjustment = findArrayMutationAdjustment(fromLeaves, ent.getDeletedStart(), ent.getDeletedEnd());
 
-                boolean beforeIsSameArr = last.parent instanceof ArrNode && beforeFirst.parent.el == last.parent.el;
-
-                if (beforeFirst.parent instanceof ArrNode
-                        && first.parent instanceof ObjNode
-                        && beforeIsSameArr) {
-
-                    ent = new IncavaEntry(ent.getDeletedStart() - 1, ent.getDeletedEnd() - 1,
+                if (adjustment > 0) {
+                    ent = new IncavaEntry(ent.getDeletedStart() - adjustment, ent.getDeletedEnd() - adjustment,
                             ent.getAddedStart(), ent.getAddedEnd());
 
                     diff.set(i, ent);
-
                 }
 
             }
 
             if (ent.getAddedStart() > 0 && ent.getAddedEnd() > 0) {
 
-                Leaf first = toLeaves.get(ent.getAddedStart());
-                Leaf beforeFirst = toLeaves.get(ent.getAddedStart() - 1);
-                Leaf last = toLeaves.get(ent.getAddedEnd());
+                int adjustment = findArrayMutationAdjustment(toLeaves, ent.getAddedStart(), ent.getAddedEnd());
 
-                boolean beforeIsSameArr = last.parent instanceof ArrNode && beforeFirst.parent.el == last.parent.el;
-
-                if (beforeFirst.parent instanceof ArrNode
-                        && first.parent instanceof ObjNode
-                        && beforeIsSameArr) {
-
+                if (adjustment > 0) {
                     ent = new IncavaEntry(ent.getDeletedStart(), ent.getDeletedEnd(),
-                            ent.getAddedStart() - 1, ent.getAddedEnd() - 1);
+                            ent.getAddedStart() - adjustment, ent.getAddedEnd() - adjustment);
 
                     diff.set(i, ent);
-
                 }
 
             }
@@ -385,50 +371,118 @@ public class JsonDiff {
     }
 
 
+    // attempts to move array addition/deletion boundaries to include array elements beforehand
+    // this is only possible for array of objects.
+    // attempt to change this situation:
+    // [a0] {o} [a1] {o} {o} [a3] {o} {o} [a4]
+    //                    x    x   x      
+    // to this:
+    // [a0] {o} [a1] {o} {o} [a3] {o} {o} [a4]
+    //            x   x   x      
+    private static int findArrayMutationAdjustment(ArrayList<Leaf> leaves, int start, int end) {
+
+        // no action if nothing to delete.
+        // [a0] {o} [a1]
+        //       x   x
+        if (end == start) {
+            return -1;
+        }
+
+        int firstArrayElementAt = -1;
+
+        // search for first any array element in range
+        // only if we find one are we going to 
+        // attempt a move.
+        for (int i = start + 1; i <= end; i++) {
+
+            Leaf leaf = leaves.get(i);
+
+            if (leaf.parent instanceof ArrNode) {
+                firstArrayElementAt = i;
+                break;
+            }
+
+        }
+
+        // no array element found in range
+        if (firstArrayElementAt < 0) {
+            return -1;
+        }
+
+        int adjustment = 1;
+        while (true) {
+
+            // impossible move
+            if (start - adjustment < 0) {
+                return -1;
+            }
+
+            Leaf first = leaves.get(start - adjustment);
+            Leaf last = leaves.get(end - adjustment + 1);
+
+            // we can only move if the *values* hash to exactly the same (including non-indexed parent)
+            if (first.hashCode() != last.hashCode()) {
+                // fail
+                return -1;
+            }
+
+            if (first.parent instanceof ArrNode) {
+                // success;
+                return adjustment;
+            }
+
+            // try one more
+            adjustment++;
+
+        }
+
+    }
+
+
     private static void adjustArrayIndexes(Collection<Leaf> mutations,
             HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs) {
-    
+
         HashMap<Integer, ArrNode> todo = new HashMap<Integer, ArrNode>();
-    
+
         for (Leaf l : mutations) {
-    
+
             if (l.parent instanceof ArrNode && (l.oper == Oper.DELETE || l.oper == Oper.INSERT)) {
-    
+
                 if (l.oper == Oper.DELETE) {
                     ((ArrNode) l.parent).delta = true;
                 } else if (l.oper == Oper.INSERT) {
                     ((ArrNode) l.parent).delta = true;
                 }
-    
+
                 // synthetic node just to get index 0 which is added into todo
                 // to check that whole array from first index.
                 ArrNode startNode = new ArrNode(l.parent.parent, l.parent.el, 0);
-    
+
                 todo.put(startNode.doHash(true), startNode);
-    
+
             }
-    
+
         }
-    
+
         // todo array contains the index 0 hash for all arrays that need to be adjusted.
         for (ArrNode cur : todo.values()) {
-    
+
             int insert = 0;
             int delete = 0;
-    
+
             ArrNode fr;
             ArrNode to;
-    
+
             while (true) {
-    
+
                 fr = fromArrs.get(cur.doHash(true));
                 to = toArrs.get(cur.doHash(true));
-    
+
                 // both null means we've reached end of both arrays
                 if (fr == null && to == null) {
                     break;
                 }
-    
+
                 // changed adjustments
                 if (fr != null) {
                     fr.prevDeletes = delete;
@@ -436,7 +490,7 @@ public class JsonDiff {
                 if (to != null) {
                     to.prevInserts = insert;
                 }
-    
+
                 // increase delete/insert counts
                 if (fr != null && fr.delta) {
                     delete++;
@@ -444,7 +498,7 @@ public class JsonDiff {
                 if (to != null && to.delta) {
                     insert++;
                 }
-    
+
                 // changed adjustments
                 if (fr != null) {
                     fr.prevInserts = insert;
@@ -452,13 +506,13 @@ public class JsonDiff {
                 if (to != null) {
                     to.prevDeletes = delete;
                 }
-    
+
                 cur.index++;
-    
+
             }
-    
+
         }
-    
+
     }
 
 
@@ -575,7 +629,16 @@ public class JsonDiff {
                 return hash;
             }
             int i = parent.hashCode();
-            i = i * 31 + (val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
+            if (val.isJsonArray()) {
+                // for arr and obj we must hash in a type qualifier
+                // since otherwise changes between these kinds of
+                // nodes will be considered equal 
+                i = i * 31 + ArrNode.class.hashCode();
+            } else if (val.isJsonObject()) {
+                i = i * 31 + ObjNode.class.hashCode();
+            } else {
+                i = i * 31 + (val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
+            }
             hash = i;
             return hash;
         }
@@ -609,7 +672,8 @@ public class JsonDiff {
             bld.append(val);
             bld.append("_");
             bld.append(hashCode());
-            bld.append(">\n");
+            bld.append(">");
+            bld.append("\n");
 
             return bld.toString();
 
@@ -669,6 +733,7 @@ public class JsonDiff {
         @Override
         protected int doHash(boolean indexed) {
             int i = parent.doHash(indexed);
+            i = i * 31 + ObjNode.class.hashCode();
             i = i * 31 + key.hashCode();
             return i;
         }

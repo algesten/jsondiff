@@ -652,7 +652,8 @@ public class JsonDiffTest {
         Assert.assertEquals(to, p);
 
     }
-    
+
+
     // Issue #7, thanks to DrLansing
     @Test
     public void testEndlessLoopInCompareArrays() {
@@ -662,26 +663,74 @@ public class JsonDiffTest {
 
         String d = JsonDiff.diff(from, to);
 
-        Assert.assertEquals("{\"~referenceTimeList[1]\":{\"start\":\"2010-10-11T17:51:52.204Z\",\"-offset\":0,\"-reference\":0},\"-referenceTimeList[0]\":0}", d);
-     
+        Assert.assertEquals(
+                "{\"~referenceTimeList[1]\":{\"start\":\"2010-10-11T17:51:52.204Z\",\"-offset\":0,\"-reference\":0},\"-referenceTimeList[0]\":0}",
+                d);
+
         String p = JsonPatch.apply(from, d);
         Assert.assertEquals(to, p);
-        
+
     }
-    
+
+
     // Issue #9, thanks to DrLansing
     @Test
     public void testAdjustArrayMutationBoundariesWithObjectDeletion() {
 
-        String from = "{\"a\":[{\"b\":{\"id\":\"id1\"}},{\"b\":{\"id\":\"id2\"}}]}"; 
+        String from = "{\"a\":[{\"b\":{\"id\":\"id1\"}},{\"b\":{\"id\":\"id2\"}}]}";
         String to = "{\"a\":[{\"b\":{\"id\":\"id2\"}}]}";
 
         String d = JsonDiff.diff(from, to);
+        Assert.assertEquals("{\"-a[0]\":0}", d);
 
         String p = JsonPatch.apply(from, d);
         Assert.assertEquals(to, p);
-        
+
     }
-    
+
+
+    @Test
+    public void testChangeArrayToObject() {
+
+        String from = "{\"b\":[1,2]}";
+        String to = "{\"b\":{\"id\":\"id2\"}}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals("{\"b\":{\"id\":\"id2\"}}", d);
+
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    @Test
+    public void testChangeObjectToArray() {
+
+        String from = "{\"b\":{\"id\":\"id2\"}}";
+        String to = "{\"b\":[1,2]}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals("{\"b\":[1,2]}", d);
+
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    @Test
+    public void testAdjustArrayMutationNestedArrayToObject() {
+
+        String from = "{\"a\":[{\"b\":[1,2]},{\"b\":[1,2]}]}";
+        String to = "{\"a\":[{\"b\":{\"id\":\"id2\"}}]}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals("{\"~a[0]\":{\"b\":{\"id\":\"id2\"}},\"-a[1]\":0}", d);
+
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+
+    }
 
 }
