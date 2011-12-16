@@ -18,20 +18,20 @@ import com.google.gson.JsonObject;
 public class JsonDiffTest {
 
 
-    public JsonDiffTest(Object hint) {
-
-        JsonDiff.setHint(hint);
-
-    }
-
-
-    @Parameters
-    public static Collection<Object[]> hints() {
-
-        Object[][] data = new Object[][] { { new JsonObject() }, { NullNode.getInstance() } };
-        return Arrays.asList(data);
-
-    }
+        public JsonDiffTest(Object hint) {
+    
+            JsonDiff.setHint(hint);
+    
+        }
+    
+    
+        @Parameters
+        public static Collection<Object[]> hints() {
+    
+            Object[][] data = new Object[][] { { new JsonObject() }, { NullNode.getInstance() } };
+            return Arrays.asList(data);
+    
+        }
 
 
     @Before
@@ -684,6 +684,75 @@ public class JsonDiffTest {
         Assert.assertEquals("{\"-a[0]\":0}", d);
 
         String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    // First find while debugging issue #9.
+    @Test
+    public void testAdjustArrayMutationBoundariesWithObjectDeletionInside() {
+
+        String from = "{\"a\":[{\"b\":{\"id\":\"id1\"}},{\"b\":{ab:{},ac:null},\"id\":\"id2\"}]}";
+        String to = "{\"a\":[{\"b\":{\"id\":\"id2\",\"ac\":\"123\"}}]}";
+
+        String d = JsonDiff.diff(from, to);
+
+        Assert.assertEquals("{\"~a[0]\":{\"~b\":{\"ac\":\"123\",\"id\":\"id2\"}},\"-a[1]\":0}", d);
+
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+
+    }
+
+
+    // Second find while debugging issue #9.
+    @Test
+    public void testModifyWhileDeletingPreviousElement1() {
+
+        // in this case k comes after i which means the end result
+        // is to delete a[0] and modify ~a[1]
+        String from = "{\"a\":[{\"id\":1,\"k\":0},{\"id\":2,\"k\":1}]}";
+        String to = "{\"a\":[{\"id\":2,\"k\":2}]}";
+
+        String d = JsonDiff.diff(from, to);
+
+        Assert.assertEquals("", d);
+
+    }
+
+
+    // Third find while debugging issue #9.
+    @Test
+    public void testModifyWhileDeletingPreviousElement2() {
+
+        // in this case b comes before i which means the end result
+        // is to delete a[1] and modify ~a[0]
+        String from = "{\"a\":[{\"id\":1,\"b\":0},{\"id\":2,\"b\":1}]}";
+        String to = "{\"a\":[{\"id\":2,\"b\":2}]}";
+
+        String d = JsonDiff.diff(from, to);
+
+        Assert.assertEquals("", d);
+
+    }
+
+
+    // Issue #9, thanks to DrLansing
+    @Test
+    public void testIssue9DiffPatch1() {
+
+        String from = "{\"p:timeFrame\":{\"g:id\":\"ID_1bi4uybddb9711i1ih4o3qqwml\",\"g:relatedTime\":[{\"relativePosition\":\"Contains\",\"g:TimeInstant\":{\"g:id\":\"ID_2odwwe6m4fhj1i7uqavgp4mpv\",\"g:identifier\":{\"codeSpace\":\"JP1_02\",\"text\":\"C-day\"},\"g:timePosition\":{\"indeterminatePosition\":\"unknown\"}}},{\"relativePosition\":\"Contains\",\"g:TimeInstant\":{\"g:id\":\"ID_1gu4yx14on411od9yrrwbraia\",\"g:identifier\":{\"codeSpace\":\"JP1_02\",\"text\":\"D-day\"},\"g:relatedTime\":{\"relativePosition\":\"MetBy\",\"g:TimePeriod\":{\"g:id\":\"ID_158yq5cp2z5lm1nugs6byvrjve\",\"g:begin\":{\"x:href\":\"ID_2odwwe6m4fhj1i7uqavgp4mpv\",\"x:title\":\"C-day\"},\"g:end\":{\"nilReason\":\"Unknown\"},\"g:duration\":\"P10D\"}},\"g:timePosition\":{\"indeterminatePosition\":\"unknown\"}}},{\"relativePosition\":\"MetBy\",\"g:TimePeriod\":{\"g:id\":\"ID_190iv1hlow39r1c0gam6p8h02k\",\"g:begin\":{\"x:href\":\"ID_1gu4yx14on411od9yrrwbraia\",\"x:title\":\"D-day\"},\"g:end\":{\"nilReason\":\"Unknown\"},\"g:duration\":\"PT0S\"}}],\"g:beginPosition\":{\"indeterminatePosition\":\"unknown\"},\"g:endPosition\":{\"indeterminatePosition\":\"unknown\"}}}";
+        String to = "{\"p:timeFrame\":{\"g:id\":\"ID_1bi4uybddb9711i1ih4o3qqwml\",\"g:relatedTime\":[{\"relativePosition\":\"Contains\",\"g:TimeInstant\":{\"g:id\":\"ID_1gu4yx14on411od9yrrwbraia\",\"g:identifier\":{\"codeSpace\":\"JP1_02\",\"text\":\"D-day\"},\"g:timePosition\":\"2010-10-11T17:51:52.204Z\"}},{\"relativePosition\":\"MetBy\",\"g:TimePeriod\":{\"g:id\":\"ID_190iv1hlow39r1c0gam6p8h02k\",\"g:begin\":{\"x:href\":\"ID_1gu4yx14on411od9yrrwbraia\",\"x:title\":\"D-day\"},\"g:end\":{\"nilReason\":\"Unknown\"},\"g:duration\":\"PT0S\"}}],\"g:beginPosition\":{\"indeterminatePosition\":\"unknown\"},\"g:endPosition\":{\"indeterminatePosition\":\"unknown\"}}}";
+
+        String d = JsonDiff.diff(from, to);
+
+        String p = JsonPatch.apply(from, d);
+
+        System.out.println(from);
+        System.out.println(to);
+        System.out.println(d);
+
         Assert.assertEquals(to, p);
 
     }
