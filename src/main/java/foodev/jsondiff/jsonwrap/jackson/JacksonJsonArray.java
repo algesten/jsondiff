@@ -53,6 +53,12 @@ public class JacksonJsonArray extends JacksonJsonElement implements JzonArray {
     public void remove(int index) {
         wrapped.remove(index);
     }
+    
 
+    @Override
+    public String toString() {
+        return wrapped.toString();
+    }
+    
 
 }

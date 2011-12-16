@@ -57,6 +57,12 @@ public class GsonJsonArray extends GsonJsonElement implements JzonArray {
     }
 
 
+    @Override
+    public String toString() {
+        return wrapped.toString();
+    }
+
+
     private final static Field JsonArray_elements;
 
 

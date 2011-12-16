@@ -88,5 +88,12 @@ public class JacksonJsonObject extends JacksonJsonElement implements JzonObject 
     public void remove(String key) {
         wrapped.remove(key);
     }
+    
+    
+    @Override
+    public String toString() {
+        return wrapped.toString();
+    }
+
 
 }

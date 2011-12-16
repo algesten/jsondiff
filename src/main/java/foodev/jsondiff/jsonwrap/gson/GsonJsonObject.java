@@ -89,4 +89,10 @@ public class GsonJsonObject extends GsonJsonElement implements JzonObject {
         wrapped.remove(key);
     }
 
+
+    @Override
+    public String toString() {
+        return wrapped.toString();
+    }
+
 }
