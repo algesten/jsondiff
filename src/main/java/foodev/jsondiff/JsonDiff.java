@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -222,6 +223,53 @@ public class JsonDiff {
     }
 
 
+    // the diff algorithm may sometimes make a strange diff for arrays of objects.
+    // from: {a:[{b:2},{c:3}]}
+    // to: {a:[{c:3}]]
+    // ends up with deleting
+    // ~a[0]: {-b:0}
+    // -a[1]: 0 // WRONG
+    // this is because the intermediate array nodes are thought of as equal
+    // and the first for a0 is considered "same" in both from/to which means
+    // the patch is not deleting the correct one. Same problem goes for additions. Issue #2
+    private static void adjustArrayMutationBoundaries(List<IncavaEntry> diff,
+            ArrayList<Leaf> fromLeaves, ArrayList<Leaf> toLeaves) {
+
+        for (int i = 0, n = diff.size(); i < n; i++) {
+
+            IncavaEntry ent = diff.get(i);
+
+            if (ent.getDeletedStart() > 0 && ent.getDeletedEnd() > 0) {
+
+                int adjustment = findArrayMutationAdjustment(fromLeaves, ent.getDeletedStart(), ent.getDeletedEnd());
+
+                if (adjustment > 0) {
+                    ent = new IncavaEntry(ent.getDeletedStart() - adjustment, ent.getDeletedEnd() - adjustment,
+                            ent.getAddedStart(), ent.getAddedEnd());
+
+                    diff.set(i, ent);
+                }
+
+            }
+
+            if (ent.getAddedStart() > 0 && ent.getAddedEnd() > 0) {
+
+                int adjustment = findArrayMutationAdjustment(toLeaves, ent.getAddedStart(), ent.getAddedEnd());
+
+                if (adjustment > 0) {
+                    ent = new IncavaEntry(ent.getDeletedStart(), ent.getDeletedEnd(),
+                            ent.getAddedStart() - adjustment, ent.getAddedEnd() - adjustment);
+
+                    diff.set(i, ent);
+                }
+
+            }
+
+        }
+
+    }
+
+
     // goes through the IncavaEntry and build the corresponding list of LEAF
     // the set will remove any add + delete leaving just the add instruction.
     private static Collection<Leaf> buildMutationList(List<IncavaEntry> diff, ArrayList<Leaf> fromLeaves,
@@ -276,8 +324,13 @@ public class JsonDiff {
 
             if (ent.getDeletedStart() >= 0 && ent.getDeletedEnd() >= 0) {
 
+                // stack of deleted arr nodes.
+                LinkedList<ArrNode> lastDeletedArrNode = null;
+
+                int i = ent.getDeletedStart(), n = ent.getDeletedEnd();
+
                 // go through deletions and add only those that don't have a corresponding addition.
-                for (int i = ent.getDeletedStart(), n = ent.getDeletedEnd(); i <= n; i++) {
+                for (; i <= n; i++) {
 
                     Leaf del = fromLeaves.get(i);
 
@@ -290,15 +343,15 @@ public class JsonDiff {
 
                     if (add == null) {
 
-                        // if any parent has been added/removed already,
-                        // this node is irrelevant
-                        if (anyParent(mutations, del.parent)) {
-                            continue;
-                        }
-
+                        // mark entry as delete regardless of it ending up in mutations since we use
+                        // this to fix half deleted arr nodes.
                         del.oper = Oper.DELETE;
 
-                        // do adjustment due to deletion
+                        // check whether we have a half deleted arr node
+                        // or completely deleted an arr node
+                        checkHalfDeletedArrNode(lastDeletedArrNode, i, n, fromLeaves);
+
+                        // do adjustment due to deletion (regardless of whether it ends up in mutations)
                         if (del.parent instanceof ArrNode) {
 
                             ((ArrNode) del.parent).delta = true;
@@ -306,6 +359,23 @@ public class JsonDiff {
                             // do adjustment
                             adjustArrayIndexes((ArrNode) del.parent, fromArrs, toArrs, mutations);
 
+                            if (i + 1 < fromLeaves.size()) {
+
+                                // save the last deleted arr node to check whether we end up
+                                // with a half deleted arr node.
+                                if (lastDeletedArrNode == null) {
+                                    lastDeletedArrNode = new LinkedList<ArrNode>();
+                                }
+                                lastDeletedArrNode.push((ArrNode) del.parent);
+
+                            }
+
+                        }
+
+                        // if any parent has been added/removed already,
+                        // this node is irrelevant
+                        if (anyParent(mutations, del.parent)) {
+                            continue;
                         }
 
                         // reindexed hash of parent
@@ -335,11 +405,104 @@ public class JsonDiff {
 
                 }
 
+                // do last check. (n, n is correct)
+                checkHalfDeletedArrNode(lastDeletedArrNode, n, n, fromLeaves);
+
+                if (lastDeletedArrNode != null && !lastDeletedArrNode.isEmpty()) {
+
+                    // we have half deleted nodes that must be converted to full SET operations.
+
+                    ArrNode makeSet = null;
+
+                    for (i = 0; i < lastDeletedArrNode.size(); i++) {
+
+                        ArrNode test = lastDeletedArrNode.get(i);
+
+                        // if we have arrays in arrays that are half deleted, the first
+                        // could be the parent of the following
+                        if (makeSet != null && test.hasParent(makeSet)) {
+                            continue;
+                        }
+
+                        // make synthetic node to use as index.
+                        makeSet = new ArrNode(test.parent, null, test.index - 1);
+                        makeSet.prevDeletes = test.prevDeletes;
+                        makeSet.prevInserts = test.prevInserts;
+                        makeSet = fromArrs.get(makeSet.doHash(true));
+
+                        ArrNode fromNode = makeSet;
+                        ArrNode toNode = toArrs.get(fromNode.doHash(true));
+
+                        // remove any mutation that has this node as parent.
+                        Iterator<Leaf> iter = mutations.values().iterator();
+                        while (iter.hasNext()) {
+                            Leaf l = iter.next();
+                            if (l.parent == toNode || l.parent.hasParent(toNode) ||
+                                    l.parent == fromNode || l.parent.hasParent(fromNode)) {
+                                iter.remove();
+                            }
+                        }
+
+                        // create new SET mutation for entire value.
+                        toNode.leaf.oper = Oper.SET;
+                        mutations.put(toNode.doHash(true), toNode.leaf);
+
+                    }
+
+                }
+
             }
 
         }
 
         return mutations.values();
+
+    }
+
+
+    private static void checkHalfDeletedArrNode(LinkedList<ArrNode> lastDeletedArrNode,
+            int index, int deleteRangeEnd, ArrayList<Leaf> fromLeaves) {
+
+        if (lastDeletedArrNode != null && !lastDeletedArrNode.isEmpty()) {
+
+            if (index + 1 >= fromLeaves.size()) {
+
+                // the very last node deleted, so all is good.
+                lastDeletedArrNode.clear();
+
+            } else {
+
+                Leaf next = fromLeaves.get(index + 1);
+
+                ArrNode lastDeleted = lastDeletedArrNode.peek();
+
+                if (next.parent == lastDeleted || next.parent.hasParent(lastDeleted)) {
+
+                    // next entry is a value in the same array or
+                    // a child of the the array
+
+                    if (index == deleteRangeEnd) {
+
+                        // we found one half deleted.
+
+                    } else {
+
+                        // i < n, just continue deletion
+
+                    }
+
+                } else {
+
+                    // not the same nor a child, which means this is a parent and
+                    // the previous array node was completely deleted.
+                    lastDeletedArrNode.pop(); // stop worry about it.
+
+                }
+
+            }
+
+
+        }
 
     }
 
@@ -355,53 +518,6 @@ public class JsonDiff {
         }
 
         return anyParent(mutations, node.parent);
-
-    }
-
-
-    // the diff algorithm may sometimes make a strange diff for arrays of objects.
-    // from: {a:[{b:2},{c:3}]}
-    // to: {a:[{c:3}]]
-    // ends up with deleting
-    // ~a[0]: {-b:0}
-    // -a[1]: 0 // WRONG
-    // this is because the intermediate array nodes are thought of as equal
-    // and the first for a0 is considered "same" in both from/to which means
-    // the patch is not deleting the correct one. Same problem goes for additions. Issue #2
-    private static void adjustArrayMutationBoundaries(List<IncavaEntry> diff,
-            ArrayList<Leaf> fromLeaves, ArrayList<Leaf> toLeaves) {
-
-        for (int i = 0, n = diff.size(); i < n; i++) {
-
-            IncavaEntry ent = diff.get(i);
-
-            if (ent.getDeletedStart() > 0 && ent.getDeletedEnd() > 0) {
-
-                int adjustment = findArrayMutationAdjustment(fromLeaves, ent.getDeletedStart(), ent.getDeletedEnd());
-
-                if (adjustment > 0) {
-                    ent = new IncavaEntry(ent.getDeletedStart() - adjustment, ent.getDeletedEnd() - adjustment,
-                            ent.getAddedStart(), ent.getAddedEnd());
-
-                    diff.set(i, ent);
-                }
-
-            }
-
-            if (ent.getAddedStart() > 0 && ent.getAddedEnd() > 0) {
-
-                int adjustment = findArrayMutationAdjustment(toLeaves, ent.getAddedStart(), ent.getAddedEnd());
-
-                if (adjustment > 0) {
-                    ent = new IncavaEntry(ent.getDeletedStart(), ent.getDeletedEnd(),
-                            ent.getAddedStart() - adjustment, ent.getAddedEnd() - adjustment);
-
-                    diff.set(i, ent);
-                }
-
-            }
-
-        }
 
     }
 
@@ -480,6 +596,8 @@ public class JsonDiff {
 
         // synthetic node just to get index 0 to check that whole array from first index.
         ArrNode cur = new ArrNode(arrNode.parent, arrNode.el, 0);
+        cur.prevDeletes = arrNode.prevDeletes;
+        cur.prevInserts = arrNode.prevInserts;
 
         int insert = 0;
         int delete = 0;
@@ -718,6 +836,17 @@ public class JsonDiff {
         Node(Node parent, JzonElement el) {
             this.el = el;
             this.parent = parent;
+        }
+
+
+        public boolean hasParent(Node node) {
+            if (parent == node) {
+                return true;
+            } else if (parent != null) {
+                return parent.hasParent(node);
+            } else {
+                return false;
+            }
         }
 
 

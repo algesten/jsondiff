@@ -731,12 +731,12 @@ public class JsonDiffTest {
 
         // in this case b comes before i which means the end result
         // is to delete a[1] and modify ~a[0]
-        String from = "{\"a\":[{\"id\":1,\"b\":0},{\"id\":2,\"b\":1}]}";
-        String to = "{\"a\":[{\"id\":2,\"b\":2}]}";
+        String from = "{\"a\":[{\"b\":0,\"id\":1},{\"b\":1,\"id\":2}]}";
+        String to = "{\"a\":[{\"b\":2,\"id\":2}]}";
 
         String d = JsonDiff.diff(from, to);
 
-        Assert.assertEquals("", d);
+        Assert.assertEquals("{\"-a[1]\":0,\"a[0]\":{\"b\":2,\"id\":2}}", d);
 
         String p = JsonPatch.apply(from, d);
         Assert.assertEquals(to, p);
