@@ -639,7 +639,7 @@ public class JsonDiffTest {
 
     // Issue #5
     @Test
-    public void testArrayObjectsRemoveAfterMultpleAdd() {
+    public void testArrayObjectsRemoveAfterMultipleAdd() {
 
         String from = "{a:[{c:0},{c:1},{c:2},{c:3},{c:4}]}";
         String to = "{\"a\":[{\"e\":0},{\"c\":0},{\"c\":2},{\"e\":2},{\"c\":3,\"d\":3},{\"e\":3}]}";
@@ -717,7 +717,10 @@ public class JsonDiffTest {
 
         String d = JsonDiff.diff(from, to);
 
-        Assert.assertEquals("", d);
+        Assert.assertEquals("{\"~a[1]\":{\"k\":2},\"-a[0]\":0}", d);
+
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
 
     }
 
@@ -735,6 +738,9 @@ public class JsonDiffTest {
 
         Assert.assertEquals("", d);
 
+        String p = JsonPatch.apply(from, d);
+        Assert.assertEquals(to, p);
+        
     }
 
 
@@ -746,12 +752,10 @@ public class JsonDiffTest {
         String to = "{\"p:timeFrame\":{\"g:id\":\"ID_1bi4uybddb9711i1ih4o3qqwml\",\"g:relatedTime\":[{\"relativePosition\":\"Contains\",\"g:TimeInstant\":{\"g:id\":\"ID_1gu4yx14on411od9yrrwbraia\",\"g:identifier\":{\"codeSpace\":\"JP1_02\",\"text\":\"D-day\"},\"g:timePosition\":\"2010-10-11T17:51:52.204Z\"}},{\"relativePosition\":\"MetBy\",\"g:TimePeriod\":{\"g:id\":\"ID_190iv1hlow39r1c0gam6p8h02k\",\"g:begin\":{\"x:href\":\"ID_1gu4yx14on411od9yrrwbraia\",\"x:title\":\"D-day\"},\"g:end\":{\"nilReason\":\"Unknown\"},\"g:duration\":\"PT0S\"}}],\"g:beginPosition\":{\"indeterminatePosition\":\"unknown\"},\"g:endPosition\":{\"indeterminatePosition\":\"unknown\"}}}";
 
         String d = JsonDiff.diff(from, to);
+        
+        Assert.assertEquals("{\"~p:timeFrame\":{\"~g:relatedTime[1]\":{\"~g:TimeInstant\":{\"g:timePosition\":\"2010-10-11T17:51:52.204Z\",\"-g:relatedTime\":0,\"~g:timePosition\":{\"-indeterminatePosition\":0}}},\"-g:relatedTime[0]\":0}}", d);
 
         String p = JsonPatch.apply(from, d);
-
-        System.out.println(from);
-        System.out.println(to);
-        System.out.println(d);
 
         Assert.assertEquals(to, p);
 

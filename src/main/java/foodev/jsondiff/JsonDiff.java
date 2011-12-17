@@ -166,10 +166,7 @@ public class JsonDiff {
 
         adjustArrayMutationBoundaries(diff, fromLeaves, toLeaves);
 
-        Collection<Leaf> mutations = buildMutationList(diff, fromLeaves, toLeaves);
-
-        // adjust after mutation list is built since it alters hash
-        adjustArrayIndexes(mutations, fromArrs, toArrs);
+        Collection<Leaf> mutations = buildMutationList(diff, fromLeaves, toLeaves, fromArrs, toArrs);
 
         JzonObject patch = JsonWrapperFactory.createJsonObject(from);
 
@@ -186,7 +183,10 @@ public class JsonDiff {
 
     private static void findLeaves(Node parent, JzonElement el, List<Leaf> leaves, HashMap<Integer, ArrNode> arrs) {
 
-        leaves.add(new Leaf(parent, el));
+        // create leaf for this part
+        Leaf leaf = new Leaf(parent, el);
+        leaves.add(leaf);
+        parent.leaf = leaf;
 
         if (el.isJsonObject()) {
 
@@ -225,7 +225,7 @@ public class JsonDiff {
     // goes through the IncavaEntry and build the corresponding list of LEAF
     // the set will remove any add + delete leaving just the add instruction.
     private static Collection<Leaf> buildMutationList(List<IncavaEntry> diff, ArrayList<Leaf> fromLeaves,
-            ArrayList<Leaf> toLeaves) {
+            ArrayList<Leaf> toLeaves, HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs) {
 
         LinkedHashMap<Integer, Leaf> mutations = new LinkedHashMap<Integer, Leaf>();
 
@@ -248,6 +248,17 @@ public class JsonDiff {
                     // right now we assume it's an insertion, but going through
                     // deletions we may change this to SET.
                     add.oper = Oper.INSERT;
+
+                    // adjust array indices before inserting hash
+                    // into mutations.
+                    if (add.parent instanceof ArrNode) {
+
+                        ((ArrNode) add.parent).delta = true;
+
+                        // do adjustment
+                        adjustArrayIndexes((ArrNode) add.parent, fromArrs, toArrs, mutations);
+
+                    }
 
                     // get an indexed hash of the parent node since
                     // we are trying to match up indexed positions
@@ -286,6 +297,20 @@ public class JsonDiff {
                         }
 
                         del.oper = Oper.DELETE;
+
+                        // do adjustment due to deletion
+                        if (del.parent instanceof ArrNode) {
+
+                            ((ArrNode) del.parent).delta = true;
+
+                            // do adjustment
+                            adjustArrayIndexes((ArrNode) del.parent, fromArrs, toArrs, mutations);
+
+                        }
+
+                        // reindexed hash of parent
+                        hash = del.parent.doHash(true);
+
                         mutations.put(hash, del);
 
                     } else {
@@ -295,6 +320,16 @@ public class JsonDiff {
 
                         // mark also deletion leaf to ease debugging.
                         del.oper = Oper.SET;
+
+                        // reset adjustment back
+                        if (add.parent instanceof ArrNode) {
+
+                            ((ArrNode) add.parent).delta = false;
+
+                            // do adjustment
+                            adjustArrayIndexes((ArrNode) add.parent, fromArrs, toArrs, mutations);
+
+                        }
 
                     }
 
@@ -439,78 +474,68 @@ public class JsonDiff {
     }
 
 
-    private static void adjustArrayIndexes(Collection<Leaf> mutations,
-            HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs) {
+    private static void adjustArrayIndexes(ArrNode arrNode,
+            HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs,
+            LinkedHashMap<Integer, Leaf> mutations) {
 
-        HashMap<Integer, ArrNode> todo = new HashMap<Integer, ArrNode>();
+        // synthetic node just to get index 0 to check that whole array from first index.
+        ArrNode cur = new ArrNode(arrNode.parent, arrNode.el, 0);
 
-        for (Leaf l : mutations) {
+        int insert = 0;
+        int delete = 0;
 
-            if (l.parent instanceof ArrNode && (l.oper == Oper.DELETE || l.oper == Oper.INSERT)) {
+        ArrNode fr;
+        ArrNode to;
 
-                if (l.oper == Oper.DELETE) {
-                    ((ArrNode) l.parent).delta = true;
-                } else if (l.oper == Oper.INSERT) {
-                    ((ArrNode) l.parent).delta = true;
-                }
+        while (true) {
 
-                // synthetic node just to get index 0 which is added into todo
-                // to check that whole array from first index.
-                ArrNode startNode = new ArrNode(l.parent.parent, l.parent.el, 0);
+            int hash = cur.doHash(true);
+            fr = fromArrs.get(hash);
+            to = toArrs.get(hash);
 
-                todo.put(startNode.doHash(true), startNode);
-
+            // both null means we've reached end of both arrays
+            if (fr == null && to == null) {
+                break;
             }
+
+            // changed adjustments
+            if (fr != null) {
+                fr.prevDeletes = delete;
+            }
+            if (to != null) {
+                to.prevInserts = insert;
+            }
+
+            // increase delete/insert counts
+            if (fr != null && fr.delta) {
+                delete++;
+            }
+            if (to != null && to.delta) {
+                insert++;
+            }
+
+            // changed adjustments
+            if (fr != null) {
+                fr.prevInserts = insert;
+            }
+            if (to != null) {
+                to.prevDeletes = delete;
+            }
+
+            cur.index++;
 
         }
 
-        // todo array contains the index 0 hash for all arrays that need to be adjusted.
-        for (ArrNode cur : todo.values()) {
 
-            int insert = 0;
-            int delete = 0;
+        // make copy since we are altering the original set
+        LinkedList<Leaf> todo = new LinkedList<Leaf>(mutations.values());
 
-            ArrNode fr;
-            ArrNode to;
+        // remove all
+        mutations.clear();
 
-            while (true) {
-
-                fr = fromArrs.get(cur.doHash(true));
-                to = toArrs.get(cur.doHash(true));
-
-                // both null means we've reached end of both arrays
-                if (fr == null && to == null) {
-                    break;
-                }
-
-                // changed adjustments
-                if (fr != null) {
-                    fr.prevDeletes = delete;
-                }
-                if (to != null) {
-                    to.prevInserts = insert;
-                }
-
-                // increase delete/insert counts
-                if (fr != null && fr.delta) {
-                    delete++;
-                }
-                if (to != null && to.delta) {
-                    insert++;
-                }
-
-                // changed adjustments
-                if (fr != null) {
-                    fr.prevInserts = insert;
-                }
-                if (to != null) {
-                    to.prevDeletes = delete;
-                }
-
-                cur.index++;
-
-            }
-
+        // put back in with new hash
+        for (Leaf leaf : todo) {
+            mutations.put(leaf.parent.doHash(true), leaf);
         }
 
     }
@@ -686,6 +711,7 @@ public class JsonDiff {
 
         final Node parent;
         final JzonElement el;
+        Leaf leaf;
         int hash = -1;
 
 
@@ -698,6 +724,14 @@ public class JsonDiff {
         abstract void toPathEl(StringBuilder bld);
 
 
+        int doHash(boolean indexed) {
+            return doHash(indexed, leaf != null ? leaf.oper : null, true);
+        }
+
+
+        abstract int doHash(boolean indexed, Oper oper, boolean lastArrNode);
+
+
         @Override
         public int hashCode() {
             if (hash >= 0) {
@@ -706,9 +740,6 @@ public class JsonDiff {
             hash = doHash(false);
             return hash;
         }
-
-
-        protected abstract int doHash(boolean indexed);
 
     }
 
@@ -731,11 +762,22 @@ public class JsonDiff {
 
 
         @Override
-        protected int doHash(boolean indexed) {
-            int i = parent.doHash(indexed);
+        int doHash(boolean indexed) {
+            return doHash(indexed, leaf != null ? leaf.oper : null, true);
+        }
+
+
+        @Override
+        int doHash(boolean indexed, Oper oper, boolean lastArrNode) {
+
+            // just pass through the arguments as is since
+            // it's the arr node that alters them.
+            int i = parent.doHash(indexed, oper, lastArrNode);
+
             i = i * 31 + ObjNode.class.hashCode();
             i = i * 31 + key.hashCode();
             return i;
+
         }
 
 
@@ -779,41 +821,7 @@ public class JsonDiff {
 
             bld.append("[");
 
-            int idx = index;
-
-            switch (oper) {
-            case DELETE:
-                // if not last, this is a path specification in
-                // which case the index is correct already.
-                if (last) {
-                    // each arr delete must be adjusted with
-                    // previous inserts because of instruction
-                    // order
-                    idx += prevInserts;
-                }
-                break;
-            case INSERT:
-                // each arr insert must be adjusted with
-                // previous deletes since they are missing
-                // from the to-leafs.
-                idx += prevDeletes;
-                break;
-            case SET:
-                // each set must be adjusted with previous
-                // deletes since they are missing from
-                // the to-leafs
-                idx += prevDeletes;
-                break;
-            }
-
-            if (!last && (oper == Oper.INSERT || oper == Oper.SET)) {
-                // if this is not the last element, we are doing
-                // a path specification. if that for INSERT/SET we
-                // are looking at the to-leaf, in which we must
-                // remove previous inserts since they happen later
-                // in the instruction order.
-                idx -= prevInserts;
-            }
+            int idx = calcAdjustedIndex(oper, last);
 
             bld.append(idx);
 
@@ -823,13 +831,72 @@ public class JsonDiff {
 
 
         @Override
-        protected int doHash(boolean indexed) {
-            int i = parent.doHash(indexed);
+        int doHash(boolean indexed, Oper oper, boolean lastArrNode) {
+
+            // this must either be the first node in which case passing
+            // false to lastArrNode must be correct, or it isn't
+            // in which case passing false is also correct.
+            int i = parent.doHash(indexed, oper, false);
+
             i = i * 31 + ArrNode.class.hashCode();
             if (indexed) {
-                i = i * 31 + index;
+
+                int adjusted = index;
+
+                if (oper != null) {
+                    adjusted = calcAdjustedIndex(oper, lastArrNode);
+                }
+
+                i = i * 31 + adjusted;
+
+
             }
+
             return i;
+
+        }
+
+
+        private int calcAdjustedIndex(Oper oper, boolean last) {
+
+            int adjusted = index;
+
+            switch (oper) {
+            case DELETE:
+                // if not last, this is a path specification in
+                // which case the index is correct already.
+                if (last) {
+                    // each arr delete must be adjusted with
+                    // previous inserts because of instruction
+                    // order
+                    adjusted += prevInserts;
+                }
+                break;
+            case INSERT:
+                // each arr insert must be adjusted with
+                // previous deletes since they are missing
+                // from the to-leafs.
+                adjusted += prevDeletes;
+                break;
+            case SET:
+                // each set must be adjusted with previous
+                // deletes since they are missing from
+                // the to-leafs
+                adjusted += prevDeletes;
+                break;
+            }
+
+            if (!last && (oper == Oper.INSERT || oper == Oper.SET)) {
+                // if this is not the last element, we are doing
+                // a path specification. if that for INSERT/SET we
+                // are looking at the to-leaf, in which we must
+                // remove previous inserts since they happen later
+                // in the instruction order.
+                adjusted -= prevInserts;
+            }
+
+            return adjusted;
+
         }
 
 
@@ -855,7 +922,7 @@ public class JsonDiff {
 
 
         @Override
-        protected int doHash(boolean indexed) {
+        int doHash(boolean indexed, Oper oper, boolean lastArrNode) {
             return 0;
         }
 
