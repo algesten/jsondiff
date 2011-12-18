@@ -428,14 +428,13 @@ public class JsonDiff {
     }
 
 
+    // investigation of half deleted nodes that must be converted to full SET operations.
     private static void fixHalfDeletedArrs(HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs,
             LinkedHashMap<Integer, Leaf> mutations, LinkedList<ArrNode> lastDeletedArrNode) {
-        int i;
-        // we have half deleted nodes that must be converted to full SET operations.
 
         ArrNode makeSet = null;
 
-        for (i = 0; i < lastDeletedArrNode.size(); i++) {
+        for (int i = 0; i < lastDeletedArrNode.size(); i++) {
 
             ArrNode test = lastDeletedArrNode.get(i);
 
@@ -445,12 +444,14 @@ public class JsonDiff {
                 continue;
             }
 
-            // make synthetic node to use for getting real value.
-            makeSet = test.cloneWIthNewIndex(test.index - 1);
+            // make synthetic node to use for getting real value from fromArrs.
+            makeSet = test.cloneToNewIndex(test.index - 1);
             makeSet = fromArrs.get(makeSet.doHash(true));
 
             ArrNode fromNode = makeSet;
-            ArrNode toNode = toArrs.get(fromNode.doHash(true));
+            
+            // find corresponding node in fromNode. 
+            ArrNode toNode = findCorrespondingNode(toArrs, fromNode);
 
             // remove any mutation that has this node as parent.
             Iterator<Leaf> iter = mutations.values().iterator();
@@ -606,7 +607,7 @@ public class JsonDiff {
             LinkedHashMap<Integer, Leaf> mutations) {
 
         // synthetic node just to get index 0 to check that whole array from first index.
-        ArrNode cur = arrNode.cloneWIthNewIndex(0);
+        ArrNode cur = arrNode.cloneToNewIndex(0);
 
         int insert = 0;
         int delete = 0;
@@ -666,6 +667,28 @@ public class JsonDiff {
             mutations.put(leaf.parent.doHash(true), leaf);
         }
 
+    }
+
+
+    private static ArrNode findCorrespondingNode(HashMap<Integer, ArrNode> arrs, ArrNode node) {
+
+        int idx = node.calcAdjustedIndex();
+
+        ArrNode best = null;
+
+        for (ArrNode cur : arrs.values()) {
+
+            if (cur.calcAdjustedIndex() == idx) {
+                if (best == null || cur.leaf != null && best.leaf == null ||
+                        cur.leaf != null && best.leaf != null && cur.leaf.oper != null
+                        && best.leaf.oper == null) {
+                    best = cur;
+                }
+            }
+
+        }
+
+        return best;
     }
 
 
@@ -932,10 +955,13 @@ public class JsonDiff {
         }
 
 
-        ArrNode cloneWIthNewIndex(int dupIndex) {
+        // this method is only used in conjunction with 
+        // fromArrs/toArrs which means prevInserts/prevDeletes
+        // must both be left as 0.
+        ArrNode cloneToNewIndex(int dupIndex) {
             ArrNode dup = new ArrNode(parent, dupIndex);
-            dup.prevInserts = prevInserts;
-            dup.prevDeletes = prevDeletes;
+            dup.prevInserts = 0; // important
+            dup.prevDeletes = 0; // important
             return dup;
         }
 
@@ -949,7 +975,7 @@ public class JsonDiff {
             bld.append(",i");
             bld.append(prevInserts);
             bld.append(",");
-            bld.append(calcAdjustedIndex(leaf != null ? leaf.oper : null, true));
+            bld.append(calcAdjustedIndex());
             bld.append("]");
         }
 
@@ -994,7 +1020,14 @@ public class JsonDiff {
         }
 
 
-        private int calcAdjustedIndex(Oper oper, boolean last) {
+        int calcAdjustedIndex() {
+
+            return calcAdjustedIndex(leaf != null ? leaf.oper : null, true);
+
+        }
+
+
+        int calcAdjustedIndex(Oper oper, boolean last) {
 
             int adjusted = index;
 
