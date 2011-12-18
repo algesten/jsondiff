@@ -200,7 +200,7 @@ public class JsonDiff {
 
             for (Entry<String, JzonElement> e : memb) {
 
-                ObjNode newParent = new ObjNode(parent, el, e.getKey());
+                ObjNode newParent = new ObjNode(parent, e.getKey());
                 findLeaves(newParent, e.getValue(), leaves, arrs);
 
             }
@@ -211,7 +211,7 @@ public class JsonDiff {
 
             for (int i = 0, n = arr.size(); i < n; i++) {
 
-                ArrNode newParent = new ArrNode(parent, el, i);
+                ArrNode newParent = new ArrNode(parent, i);
 
                 // this array saves a reference to all arrnodes
                 // which is used to adjust arr node indexes.
@@ -445,10 +445,8 @@ public class JsonDiff {
                 continue;
             }
 
-            // make synthetic node to use as index.
-            makeSet = new ArrNode(test.parent, null, test.index - 1);
-            makeSet.prevDeletes = test.prevDeletes;
-            makeSet.prevInserts = test.prevInserts;
+            // make synthetic node to use for getting real value.
+            makeSet = test.cloneWIthNewIndex(test.index - 1);
             makeSet = fromArrs.get(makeSet.doHash(true));
 
             ArrNode fromNode = makeSet;
@@ -608,9 +606,7 @@ public class JsonDiff {
             LinkedHashMap<Integer, Leaf> mutations) {
 
         // synthetic node just to get index 0 to check that whole array from first index.
-        ArrNode cur = new ArrNode(arrNode.parent, arrNode.el, 0);
-        cur.prevDeletes = arrNode.prevDeletes;
-        cur.prevInserts = arrNode.prevInserts;
+        ArrNode cur = arrNode.cloneWIthNewIndex(0);
 
         int insert = 0;
         int delete = 0;
@@ -653,6 +649,7 @@ public class JsonDiff {
                 to.prevDeletes = delete;
             }
 
+            // this works since fromArrs/toArrs are never rehashed
             cur.index++;
 
         }
@@ -836,12 +833,10 @@ public class JsonDiff {
     private static abstract class Node {
 
         final Node parent;
-        final JzonElement el;
         Leaf leaf;
 
 
-        Node(Node parent, JzonElement el) {
-            this.el = el;
+        Node(Node parent) {
             this.parent = parent;
         }
 
@@ -881,8 +876,8 @@ public class JsonDiff {
         final String key;
 
 
-        ObjNode(Node parent, JzonElement el, String key) {
-            super(parent, el);
+        ObjNode(Node parent, String key) {
+            super(parent);
             this.key = key;
         }
 
@@ -931,9 +926,17 @@ public class JsonDiff {
         int prevDeletes;
 
 
-        ArrNode(Node parent, JzonElement el, int index) {
-            super(parent, el);
+        ArrNode(Node parent, int index) {
+            super(parent);
             this.index = index;
+        }
+
+
+        ArrNode cloneWIthNewIndex(int dupIndex) {
+            ArrNode dup = new ArrNode(parent, dupIndex);
+            dup.prevInserts = prevInserts;
+            dup.prevDeletes = prevDeletes;
+            return dup;
         }
 
 
@@ -1051,7 +1054,7 @@ public class JsonDiff {
 
 
         Root() {
-            super(null, null);
+            super(null);
         }
 
 
