@@ -654,6 +654,22 @@ public class JsonDiffTest {
     }
 
 
+    @Test
+    public void testArrayObjectsRemoveAfterAdd() {
+
+        String from = "{a:[{c:1},{c:3},{c:4}]}";
+        String to = "{\"a\":[{\"e\":2},{\"c\":3,\"d\":3},{\"e\":3}]}";
+        String diff = "{\"~a[0]\":{\"e\":2,\"-c\":0},\"~a[1]\":{\"d\":3},\"~a[2]\":{\"e\":3,\"-c\":0}}";
+
+        String d = JsonDiff.diff(from, to);
+        Assert.assertEquals(diff, d);
+
+        String p = JsonPatch.apply(from, diff);
+        Assert.assertEquals(to, p);
+
+    }
+
+
     // Issue #7, thanks to DrLansing
     @Test
     public void testEndlessLoopInCompareArrays() {

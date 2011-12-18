@@ -1,6 +1,7 @@
 package foodev.jsondiff;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -77,6 +78,9 @@ import foodev.jsondiff.jsonwrap.JzonObject;
  * 
  */
 public class JsonDiff {
+
+    private static final List<Oper> OPER_SETDELETE = Arrays.asList(Oper.SET, Oper.DELETE);
+    private static final List<Oper> OPER_INSERT = Arrays.asList(Oper.INSERT);
 
     // by providing null as hint we default to GSON.
     private static Object hint = null;
@@ -287,9 +291,9 @@ public class JsonDiff {
 
                     Leaf add = toLeaves.get(i);
 
-                    // if any parent has been added already,
+                    // if any parent have been inserted already,
                     // this node is irrelevant
-                    if (anyParent(mutations, add.parent)) {
+                    if (anyParent(mutations, add.parent, OPER_INSERT)) {
                         continue;
                     }
 
@@ -372,9 +376,9 @@ public class JsonDiff {
 
                         }
 
-                        // if any parent has been added/removed already,
+                        // if any parent has been SET/DELETED already,
                         // this node is irrelevant
-                        if (anyParent(mutations, del.parent)) {
+                        if (anyParent(mutations, del.parent, OPER_SETDELETE)) {
                             continue;
                         }
 
@@ -410,44 +414,8 @@ public class JsonDiff {
 
                 if (lastDeletedArrNode != null && !lastDeletedArrNode.isEmpty()) {
 
-                    // we have half deleted nodes that must be converted to full SET operations.
-
-                    ArrNode makeSet = null;
-
-                    for (i = 0; i < lastDeletedArrNode.size(); i++) {
-
-                        ArrNode test = lastDeletedArrNode.get(i);
-
-                        // if we have arrays in arrays that are half deleted, the first
-                        // could be the parent of the following
-                        if (makeSet != null && test.hasParent(makeSet)) {
-                            continue;
-                        }
-
-                        // make synthetic node to use as index.
-                        makeSet = new ArrNode(test.parent, null, test.index - 1);
-                        makeSet.prevDeletes = test.prevDeletes;
-                        makeSet.prevInserts = test.prevInserts;
-                        makeSet = fromArrs.get(makeSet.doHash(true));
-
-                        ArrNode fromNode = makeSet;
-                        ArrNode toNode = toArrs.get(fromNode.doHash(true));
-
-                        // remove any mutation that has this node as parent.
-                        Iterator<Leaf> iter = mutations.values().iterator();
-                        while (iter.hasNext()) {
-                            Leaf l = iter.next();
-                            if (l.parent == toNode || l.parent.hasParent(toNode) ||
-                                    l.parent == fromNode || l.parent.hasParent(fromNode)) {
-                                iter.remove();
-                            }
-                        }
-
-                        // create new SET mutation for entire value.
-                        toNode.leaf.oper = Oper.SET;
-                        mutations.put(toNode.doHash(true), toNode.leaf);
-
-                    }
+                    // fix potentially half deleted arr nodes
+                    fixHalfDeletedArrs(fromArrs, toArrs, mutations, lastDeletedArrNode);
 
                 }
 
@@ -457,6 +425,50 @@ public class JsonDiff {
 
         return mutations.values();
 
+    }
+
+
+    private static void fixHalfDeletedArrs(HashMap<Integer, ArrNode> fromArrs, HashMap<Integer, ArrNode> toArrs,
+            LinkedHashMap<Integer, Leaf> mutations, LinkedList<ArrNode> lastDeletedArrNode) {
+        int i;
+        // we have half deleted nodes that must be converted to full SET operations.
+
+        ArrNode makeSet = null;
+
+        for (i = 0; i < lastDeletedArrNode.size(); i++) {
+
+            ArrNode test = lastDeletedArrNode.get(i);
+
+            // if we have arrays in arrays that are half deleted, the first
+            // could be the parent of the following
+            if (makeSet != null && test.hasParent(makeSet)) {
+                continue;
+            }
+
+            // make synthetic node to use as index.
+            makeSet = new ArrNode(test.parent, null, test.index - 1);
+            makeSet.prevDeletes = test.prevDeletes;
+            makeSet.prevInserts = test.prevInserts;
+            makeSet = fromArrs.get(makeSet.doHash(true));
+
+            ArrNode fromNode = makeSet;
+            ArrNode toNode = toArrs.get(fromNode.doHash(true));
+
+            // remove any mutation that has this node as parent.
+            Iterator<Leaf> iter = mutations.values().iterator();
+            while (iter.hasNext()) {
+                Leaf l = iter.next();
+                if (l.parent == toNode || l.parent.hasParent(toNode) ||
+                        l.parent == fromNode || l.parent.hasParent(fromNode)) {
+                    iter.remove();
+                }
+            }
+
+            // create new SET mutation for entire value.
+            toNode.leaf.oper = Oper.SET;
+            mutations.put(toNode.doHash(true), toNode.leaf);
+
+        }
     }
 
 
@@ -507,17 +519,18 @@ public class JsonDiff {
     }
 
 
-    private static boolean anyParent(LinkedHashMap<Integer, Leaf> mutations, Node node) {
+    private static boolean anyParent(LinkedHashMap<Integer, Leaf> mutations, Node node, Collection<Oper> opers) {
 
         if (node == null) {
             return false;
         }
 
-        if (mutations.containsKey(node.doHash(true))) {
+        if (mutations.containsKey(node.doHash(true)) &&
+                node.leaf != null && opers.contains(node.leaf.oper)) {
             return true;
         }
 
-        return anyParent(mutations, node.parent);
+        return anyParent(mutations, node.parent, opers);
 
     }
 
@@ -670,7 +683,6 @@ public class JsonDiff {
 
         final Node parent;
         final JzonElement val;
-        Integer hash;
         Oper oper;
 
 
@@ -768,9 +780,6 @@ public class JsonDiff {
 
         @Override
         public int hashCode() {
-            if (hash != null) {
-                return hash;
-            }
             int i = parent.hashCode();
             if (val.isJsonArray()) {
                 // for arr and obj we must hash in a type qualifier
@@ -782,8 +791,7 @@ public class JsonDiff {
             } else {
                 i = i * 31 + (val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
             }
-            hash = i;
-            return hash;
+            return i;
         }
 
 
@@ -830,7 +838,6 @@ public class JsonDiff {
         final Node parent;
         final JzonElement el;
         Leaf leaf;
-        int hash = -1;
 
 
         Node(Node parent, JzonElement el) {
@@ -863,11 +870,7 @@ public class JsonDiff {
 
         @Override
         public int hashCode() {
-            if (hash >= 0) {
-                return hash;
-            }
-            hash = doHash(false);
-            return hash;
+            return doHash(false);
         }
 
     }
@@ -938,10 +941,12 @@ public class JsonDiff {
         void toPathEl(StringBuilder bld) {
             bld.append("[");
             bld.append(index);
-            bld.append(",");
+            bld.append(",d");
             bld.append(prevDeletes);
-            bld.append(",");
+            bld.append(",i");
             bld.append(prevInserts);
+            bld.append(",");
+            bld.append(calcAdjustedIndex(leaf != null ? leaf.oper : null, true));
             bld.append("]");
         }
 
@@ -989,6 +994,11 @@ public class JsonDiff {
         private int calcAdjustedIndex(Oper oper, boolean last) {
 
             int adjusted = index;
+
+            // avoid NPE in toString()
+            if (oper == null) {
+                return adjusted;
+            }
 
             switch (oper) {
             case DELETE:
