@@ -391,10 +391,11 @@ public class JsonDiff {
 
                         // both added and deleted, change to SET.
                         add.oper = Oper.SET;
-
-                        // mark also deletion leaf to ease debugging.
+                        
+                        // also change deletion to SET since anyParent() 
+                        // checks for DELETE and SET operations.
                         del.oper = Oper.SET;
-
+                        
                         // reset adjustment back
                         if (add.parent instanceof ArrNode) {
 
@@ -524,8 +525,9 @@ public class JsonDiff {
             return false;
         }
 
-        if (mutations.containsKey(node.doHash(true)) &&
-                node.leaf != null && opers.contains(node.leaf.oper)) {
+        Leaf match = mutations.get(node.doHash(true));
+        
+        if (match != null && opers.contains(match.oper)) {
             return true;
         }
 
