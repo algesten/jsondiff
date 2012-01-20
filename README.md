@@ -94,3 +94,7 @@ The first method works off strings and returns a string. Internally GSON is used
 The second method can either work off two GSON `JsonObject` and return the corresponding, or alternatively two Jackson
 `ObjectNode` and return that kind of object. The latter style would require the user to include the Jackson jar on
 the classpath.
+
+### Javadoc ###
+
+Latest [API javadoc](http://algesten.github.com/jsondiff/apidocs/).
