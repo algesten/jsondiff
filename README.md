@@ -81,3 +81,16 @@ This would yield:
 2. Set at 2: `[0, 1, 42, { me: "too", foo: "bar" }]`
 3. Insert at 1: `[0, "example", 1, 42, { me: "too", foo: "bar" }]`
 4. Delete at 2: `[0, "example", 42, { me: "too", foo: "bar" }]`
+
+### GSON vs Jackson ###
+
+The package works default using GSON. However Jackson is also supported. The API has two main methods (both `JsonDiff` 
+and `JsonPatch` follows this pattern):
+
+    public static String diff(String from, String to)
+    public static Object diff(Object from, Object to)
+
+The first method works off strings and returns a string. Internally GSON is used, but that is of no concern to the user.
+The second method can either work off two GSON `JsonObject` and return the corresponding, or alternatively two Jackson
+`ObjectNode` and return that kind of object. The latter style would require the user to include the Jackson jar on
+the classpath.
