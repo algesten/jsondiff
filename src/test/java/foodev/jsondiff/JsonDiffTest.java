@@ -823,5 +823,23 @@ public class JsonDiffTest {
         Assert.assertEquals(to, p);
 
     }
+    
+    // Issue #13. Thanks to Daniel Gardner for reporting.
+    @Test
+    public void testSameEndValueTwoConsequtiveArrayElements() {
+    	
+    	String i = "{\"a\":[{\"b\":[1],\"c\":\"x\"}]}";
+
+    	String j1 = "{\"a\":[{\"b\":[1],\"c\":\"x\"},{\"b\":[1],\"c\":\"x\"}]}";
+
+        String d = JsonDiff.diff(i, j1);
+
+        Assert.assertEquals("{\"a[+1]\":{\"b\":[1],\"c\":\"x\"}}", d);
+        
+        String p = JsonPatch.apply(i, d);
+        
+        Assert.assertEquals(j1, p);
+        
+    }
 
 }
