@@ -553,6 +553,12 @@ public class JsonDiff {
             return -1;
         }
 
+        // no action if beginning is
+        // already positioned at array node (issue #13)
+        if (leaves.get(start).parent instanceof ArrNode) {
+        	return -1;
+		}
+        
         int firstArrayElementAt = -1;
 
         // search for first any array element in range
