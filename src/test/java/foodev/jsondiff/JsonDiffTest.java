@@ -842,4 +842,28 @@ public class JsonDiffTest {
         
     }
 
+    
+    // #14. Thanks to zhangwei13 for reporting.
+	@Test
+	public void testArrayObjectMutations() {
+
+		String j1 = "{\"a\":[{\"name\":\"k2\",\"value\":\"k2v2\",\"seq\":1},"
+				+ "{\"name\":\"k6\",\"value\":\"k6v1\",\"seq\":1}," + "{\"name\":\"k7\",\"value\":\"k7v1\",\"seq\":1},"
+				+ "{\"name\":\"k5\",\"value\":\"k5v1\",\"seq\":1}]}";
+
+		String j2 = "{\"a\":[{\"name\":\"k1\",\"value\":\"k1v1\",\"seq\":1},"
+				+ "{\"name\":\"k2\",\"value\":\"k2v1\",\"seq\":1}," + "{\"name\":\"k3\",\"value\":\"k3v1\",\"seq\":1},"
+				+ "{\"name\":\"k4\",\"value\":\"k4v1\",\"seq\":1},"
+				+ "{\"name\":\"k5\",\"value\":\"k5v1\",\"seq\":1}]}";
+
+		String d = JsonDiff.diff(j1, j2);
+
+		Assert.assertEquals("{\"a[+0]\":{\"name\":\"k1\",\"value\":\"k1v1\",\"seq\":1},\"~a[0]\":{\"value\":\"k2v2\"},\"~a[1]\":{\"name\":\"k6\"},\"~a[2]\":{\"value\":\"k3v1\"},\"~a[3]\":{\"name\":\"k4\",\"value\":\"k4v1\"}}", d);
+		
+		String p = JsonPatch.apply(j1, d);
+
+		Assert.assertEquals(j2, p);
+
+	}
+
 }
