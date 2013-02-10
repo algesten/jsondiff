@@ -65,14 +65,14 @@ subsequent instructions. Regardless of instruction order in the json object pass
 Example:
 
     var orig = {
-      a = [0, 1, 2, { me: "too" }];    
+      a: [0, 1, 2, { me: "too" }]
     };
 
     var patch = {
       "a[2]": 42,
       "~a[3]": { foo: "bar" },
       "a[+1]": "example",
-      "-a[2]: null,
+      "-a[2]: null
     };
 
 This would yield:
