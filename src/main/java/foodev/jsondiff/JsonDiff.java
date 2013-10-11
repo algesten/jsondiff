@@ -451,26 +451,30 @@ public class JsonDiff {
 
             ArrNode fromNode = makeSet;
             
-            // find corresponding node in fromNode. 
-            ArrNode toNode = findCorrespondingNode(toArrs, fromNode);
+            // NPE fix #12, thanks nachogmd 
+            if (fromNode != null) {
+            	
+            	  // find corresponding node in fromNode. 
+                ArrNode toNode = findCorrespondingNode(toArrs, fromNode);
 
-            // remove any mutation that has this node as parent.
-            Iterator<Leaf> iter = mutations.values().iterator();
-            while (iter.hasNext()) {
-                Leaf l = iter.next();
-                if (l.parent == toNode || l.parent.hasParent(toNode) ||
-                        l.parent == fromNode || l.parent.hasParent(fromNode)) {
-                    iter.remove();
+                // remove any mutation that has this node as parent.
+                Iterator<Leaf> iter = mutations.values().iterator();
+                while (iter.hasNext()) {
+                    Leaf l = iter.next();
+                    if (l.parent == toNode || l.parent.hasParent(toNode) ||
+                            l.parent == fromNode || l.parent.hasParent(fromNode)) {
+                        iter.remove();
+                    }
                 }
-            }
 
-            // create new SET mutation for entire value.
-            toNode.leaf.oper = Oper.SET;
-            mutations.put(toNode.doHash(true), toNode.leaf);
+				// create new SET mutation for entire value.
+				toNode.leaf.oper = Oper.SET;
+				mutations.put(toNode.doHash(true), toNode.leaf);
+				
+            }
 
         }
     }
-
 
     private static void checkHalfDeletedArrNode(LinkedList<ArrNode> lastDeletedArrNode,
             int index, int deleteRangeEnd, ArrayList<Leaf> fromLeaves) {
