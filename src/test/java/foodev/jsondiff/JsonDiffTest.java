@@ -865,5 +865,19 @@ public class JsonDiffTest {
 		Assert.assertEquals(j2, p);
 
 	}
+	
+	// issue #12. thanks to nachogmd for test and solution.
+	@Test
+	public void testArrayChangeToNull() {
+	    String from = "{a:[{b:1}],b:1}";
+	    String to = "{\"b\":1}";
+	    String diff = "{\"-a\":0}";
+
+	    String d = JsonDiff.diff(from, to);
+	    Assert.assertEquals(diff, d);
+
+	    String p = JsonPatch.apply(from, diff);
+	    Assert.assertEquals(to, p);
+	}
 
 }
