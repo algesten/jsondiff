@@ -440,8 +440,9 @@ public class JsonDiff {
             ArrNode test = lastDeletedArrNode.get(i);
 
             // if we have arrays in arrays that are half deleted, the first
-            // could be the parent of the following
-            if (makeSet != null && test.hasParent(makeSet)) {
+            // could be the parent of the following or we could be at the beginning of the array
+            // NPE fix #12, thanks nachogmd 
+            if (makeSet != null && test.hasParent(makeSet) || test.index == 0) {
                 continue;
             }
 

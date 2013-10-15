@@ -868,16 +868,26 @@ public class JsonDiffTest {
 	
 	// issue #12. thanks to nachogmd for test and solution.
 	@Test
-	public void testArrayChangeToNull() {
-	    String from = "{a:[{b:1}],b:1}";
-	    String to = "{\"b\":1}";
-	    String diff = "{\"-a\":0}";
-
-	    String d = JsonDiff.diff(from, to);
-	    Assert.assertEquals(diff, d);
-
-	    String p = JsonPatch.apply(from, diff);
-	    Assert.assertEquals(to, p);
+	public void testArrayChangeToNull() {		
+		try {
+		    String from,to;
+		    from = "{\"externalIds\":[{\"id\":\"4066-b329\"}],\"relation\":[{\"rules\":{\"keys\":[{\"shareHolders\":[{\"percentage\":0.0}]}]}}]}";
+		    to =   "{\"externalIds\":[{\"id\":\"4066-b329\"}]}";
+	
+		    JsonDiff.diff(from, to);
+		    from = "{\"externalIds\":[{\"id\":\"4066-b329\"}],\"catalogueRelationList\":[{\"rules\":{\"keys\":[{\"shareHolders\":[{\"percentage\":0.0}]}]}}]}";
+		    to =   "{\"externalIds\":[{\"id\":\"4066-b329\"}]}";
+		    JsonDiff.diff(from, to);
+	
+		    String diff = "{\"-catalogueRelationList\":0}";
+	
+		    String d = JsonDiff.diff(from, to);
+		    Assert.assertEquals(diff, d);
+	
+		    String p = JsonPatch.apply(from, diff);
+		    Assert.assertEquals(to, p);
+		} catch (NullPointerException npe) {
+			Assert.fail("Caught NPE");
+		}
 	}
-
 }
