@@ -370,7 +370,7 @@ public class JsonDiff {
                                 if (lastDeletedArrNode == null) {
                                     lastDeletedArrNode = new LinkedList<ArrNode>();
                                 }
-                                lastDeletedArrNode.push((ArrNode) del.parent);
+                                lastDeletedArrNode.addFirst((ArrNode) del.parent);
 
                             }
 
@@ -508,7 +508,7 @@ public class JsonDiff {
 
                     // not the same nor a child, which means this is a parent and
                     // the previous array node was completely deleted.
-                    lastDeletedArrNode.pop(); // stop worry about it.
+                    lastDeletedArrNode.removeFirst(); // stop worry about it.
 
                 }
 
@@ -734,7 +734,7 @@ public class JsonDiff {
             Collections.reverse(path);
 
             // remove root
-            path.pop();
+            path.removeFirst();
 
             StringBuilder key = new StringBuilder();
 
@@ -746,14 +746,14 @@ public class JsonDiff {
                 key.delete(0, key.length());
 
                 // ought to be an ObjNode
-                ObjNode on = (ObjNode) path.pop();
+                ObjNode on = (ObjNode) path.removeFirst();
 
                 on.toPathEl(key);
 
                 // add on any array specifications
                 while (!path.isEmpty() && path.peek() instanceof ArrNode) {
 
-                    ArrNode arrNode = (ArrNode) path.pop();
+                    ArrNode arrNode = (ArrNode) path.removeFirst();
 
                     arrNode.toPathEl(key, oper, arrNode == parent);
 

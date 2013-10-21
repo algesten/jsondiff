@@ -1,0 +1,15 @@
+<module>
+
+	<!-- Standard inherit. -->
+	<inherits name='com.google.gwt.json.JSON' />
+
+	<source path="jsondiff">
+		<exclude name="JsonDiffTest.java"/>
+		<exclude name="JsonPatchTest.java"/>
+		<exclude name="jsonwrap/gson/*.*"/>
+		<exclude name="jsonwrap/jackson/*.*"/>
+	</source>
+
+	<super-source path='jre' />
+	
+</module>
