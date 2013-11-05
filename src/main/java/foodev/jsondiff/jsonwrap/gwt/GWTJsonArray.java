@@ -10,7 +10,7 @@ import foodev.jsondiff.jsonwrap.JzonElement;
 
 public class GWTJsonArray extends GWTJsonElement implements JzonArray {
 
-	private JSONArray wrapped;
+	private final JSONArray wrapped;
 
 	public static native JavaScriptObject remove(JavaScriptObject array, int index, int howMany)
 	/*-{
@@ -51,8 +51,7 @@ public class GWTJsonArray extends GWTJsonElement implements JzonArray {
 
 	@Override
 	public void insert(int index, JzonElement el) {
-		JavaScriptObject newArray = insert(wrapped.getJavaScriptObject(), index, (JSONValue) el.unwrap());
-		wrapped = new JSONArray(newArray);
+		insert(wrapped.getJavaScriptObject(), index, (JSONValue) el.unwrap());
 	}
 
 	@Override
@@ -62,8 +61,7 @@ public class GWTJsonArray extends GWTJsonElement implements JzonArray {
 
 	@Override
 	public void remove(int index) {
-		JavaScriptObject newArray = remove(wrapped.getJavaScriptObject(), index, 1);
-		wrapped = new JSONArray(newArray);
+		remove(wrapped.getJavaScriptObject(), index, 1);
 	}
 
 	@Override
