@@ -50,6 +50,10 @@
 							<name>gwt.args</name>
 							<value>-out \${webAppDirectory}</value>
 						</property>
+			            <property>
+			                <name>gwt.persistentunitcache</name>
+			                <value>false</value>
+			            </property>
 					</systemProperties>
 				</configuration>
 			</plugin>
