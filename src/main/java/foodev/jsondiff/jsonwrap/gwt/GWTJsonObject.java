@@ -33,6 +33,10 @@ public class GWTJsonObject extends GWTJsonElement implements JzonObject {
 
 	@Override
 	public void addProperty(String key, int prop) {
+		if (key.startsWith("-0")) {
+			//gwt bug
+			key = "--0";
+		}
 		wrapped.put(key, new JSONNumber(prop));
 	}
 

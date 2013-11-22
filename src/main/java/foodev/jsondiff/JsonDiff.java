@@ -4,13 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.codehaus.jackson.node.ObjectNode;
@@ -79,7 +76,7 @@ public class JsonDiff {
 	static final Logger LOG = Logger.getLogger(JsonDiff.class.getName());
 
 	// by providing null as hint we default to GSON.
-	private static Object hint = null;
+	static Object hint = null;
 
 	// For testing
 	static void setHint(Object hint) {
@@ -177,7 +174,7 @@ public class JsonDiff {
 			fromLeaf = (fromLeaves.size() > insertionIndex) ? fromLeaves.get(insertionIndex) : fromLeaves.get(fromLeaves.size() - 1);
 			int index = insertionIndex;
 			while (fromLeaf.oper == Oper.DELETE && index > 0) {
-				// find a NOT deleted node for set / insertion
+				// find a NOT deleted node for set / insertion - parent traversal will be done later
 				index--;
 				fromLeaf = fromLeaves.get(index);
 			}
@@ -191,7 +188,7 @@ public class JsonDiff {
 					Leaf deleted = fromLeaves.get(incavaEntry.getDeletedStart() + delta + (i - incavaEntry.getAddedStart()));
 					if (!fromLeaf.cancelDelete(deleted, toLeaf)) {
 						// couldn't cancel delete (different obj key): INSERT
-						deleted.insert(toLeaf, null);
+						fromLeaf.insert(toLeaf, null);
 						fromLeaves.add(insertionIndex + 1, toLeaf);
 						fromLeaf = toLeaf;
 						delta++;
@@ -218,7 +215,7 @@ public class JsonDiff {
 		// create patch
 		JzonObject patch = fromLeaves.iterator().next().patch();
 		// prints the new structure
-		fromLeaves.iterator().next().print();
+		// fromLeaves.iterator().next().print();
 		return patch;
 
 	}
@@ -272,426 +269,7 @@ public class JsonDiff {
 		return leaf;
 	}
 
-	private static enum Oper {
-		INSERT, DELETE, SET
-	}
-
-	private static class Leaf implements Comparable<Leaf> {
-
-		Node parent;
-		JzonElement val;
-		Oper oper;
-
-		List<Leaf> children = new LinkedList<JsonDiff.Leaf>();
-		List<Leaf> newStructure = new LinkedList<JsonDiff.Leaf>();
-
-		Leaf(Node parent, JzonElement val) {
-			this.parent = parent;
-			this.val = val;
-		}
-
-		boolean isOrphan() {
-			return parent.hashCode != 0 && parent.isOrphan();
-		}
-
-		void init() {
-			this.parent.hashCode = this.parent.doHash(false);
-			this.parent.parentHashCode = (this.parent.parent == null) ? 0 : this.parent.parent.doHash(false);
-			this.newStructure.addAll(children);
-		}
-
-		void delete(Leaf leaf, Leaf at) {
-			if (LOG.isLoggable(Level.FINEST))
-				LOG.finest("DELETE  @" + this);
-			leaf.oper = Oper.DELETE;
-			if (leaf.isOrphan()) {
-				Leaf attach = this;
-				int atIndex = (at == this) ? 0 : exactIndex(newStructure, at) + 1;
-				if (leaf.parent.parentHashCode == attach.parent.hashCode) {
-					// direct attachment
-					leaf.parent.parent = attach.parent;
-					attach.newStructure.add(atIndex, leaf);
-				} else {
-					parent.parent.leaf.delete(leaf, this);
-				}
-			}
-			for (Leaf orphan : leaf.newStructure) {
-				orphan.parent.orphan();
-			}
-			leaf.newStructure.clear();
-		}
-
-		boolean cancelDelete(Leaf deleted, Leaf with) {
-			if (deleted.parent.hashCode == with.parent.hashCode) {
-				if (LOG.isLoggable(Level.FINEST))
-					LOG.finest("SET " + deleted + " @" + with);
-				with.newStructure.clear();
-				deleted.oper = Oper.SET;
-				deleted.val = with.val;
-				Leaf newParent = deleted.parent.parent.leaf;
-				deleted.parent.parent = newParent.parent;
-				// recover deleted children (orphans)
-				for (Leaf orphan : deleted.children) {
-					orphan.parent.parent = deleted.parent;
-					newStructure.add(orphan);
-				}
-				return true;
-			}
-			return false;
-		}
-
-		void attach(Leaf leaf, Leaf at) {
-			Leaf attach = this;
-			int myIndex = (parent.parent == null) ? 0 : exactIndex(parent.parent.leaf.newStructure, this);
-			int atIndex = (at == this) ? 0 : exactIndex(newStructure, at) + 1;
-			while (leaf.oper != Oper.DELETE && attach.oper == Oper.DELETE && myIndex > 0) {
-				myIndex--;
-				attach = parent.parent.leaf.newStructure.get(myIndex);
-				atIndex = attach.newStructure.size();
-			}
-			if (leaf.parent.parentHashCode == attach.parent.hashCode) {
-				// direct attachment
-				if (leaf.oper != Oper.DELETE && attach.oper == Oper.DELETE) {
-					attach.parent.parent.leaf.attach(leaf, this);
-				} else {
-					leaf.parent.parent = attach.parent;
-					attach.newStructure.add(atIndex, leaf);
-					if (LOG.isLoggable(Level.FINEST))
-						LOG.finest("ATT " + leaf + " @" + this);
-				}
-			} else {
-				parent.parent.leaf.attach(leaf, this);
-			}
-		}
-
-		Leaf checkCancelation(Leaf possibleCancellation) {
-			for (Iterator<Leaf> iterator2 = newStructure.iterator(); iterator2.hasNext();) {
-				Leaf check = iterator2.next();
-				if (check != possibleCancellation && check.parent.hashCode == possibleCancellation.parent.hashCode) {
-					return check;
-				}
-			}
-			return null;
-		}
-
-		void print() {
-			print(0);
-		}
-
-		void print(int tab) {
-			for (Leaf lEntry : newStructure) {
-				for (int i = 0; i < tab; i++) {
-					System.out.print("\t");
-				}
-				System.out.println(lEntry);
-				lEntry.print(tab + 1);
-			}
-		}
-
-		void recover(List<Leaf> fromLeaves) {
-			if (isOrphan()) {
-				int thisIndex = exactIndex(fromLeaves, this);
-				Leaf newParent = null;
-				while (newParent == null || (oper != Oper.DELETE && newParent.oper == Oper.DELETE)) {
-					thisIndex--;
-					newParent = fromLeaves.get(thisIndex);
-					if (newParent.isOrphan()) {
-						newParent.recover(fromLeaves);
-					}
-				}
-				while (newParent.parent.parent != null && newParent.parent.hashCode != parent.parentHashCode) {
-					newParent = newParent.parent.parent.leaf;
-					if (newParent.isOrphan()) {
-						newParent.recover(fromLeaves);
-					}
-				}
-				if (LOG.isLoggable(Level.FINEST))
-					LOG.finest("RECOVER " + this + " @" + newParent);
-				newParent.attach(this, null);
-			}
-		}
-
-		JzonObject patch() {
-			JzonObject patch = JsonWrapperFactory.createJsonObject(null);
-			createPatch(patch);
-			return patch;
-		}
-
-		JzonObject createPatch(JzonObject patch) {
-			JzonObject instructions = JsonWrapperFactory.createJsonObject(null);
-			if (oper != Oper.DELETE) {
-				for (Iterator<Leaf> it = newStructure.iterator(); it.hasNext();) {
-					Leaf child = it.next();
-					if (child.oper == Oper.DELETE) {
-						Leaf cancelled = checkCancelation(child);
-						if (cancelled != null) {
-							cancelled.oper = Oper.SET;
-							it.remove();
-							child = cancelled;
-						}
-					}
-					child.createPatch(patch);
-				}
-			} else {
-				newStructure.clear();
-			}
-			return instructions;
-		}
-
-		void insert(Leaf leaf, Leaf where) {
-			int hashCode = parent.hashCode;
-			int insCode = leaf.parent.parent.hashCode;
-			if (hashCode == 0 || insCode == hashCode) {
-				if (LOG.isLoggable(Level.FINEST))
-					LOG.finest("INSERT " + leaf + " @" + this);
-				// eligible for insertion - check for sets after building the new graph
-				leaf.oper = Oper.INSERT;
-				leaf.parent.parent = parent;
-				leaf.newStructure.clear();
-				if (where != null) {
-					int insertAt = exactIndex(newStructure, where) + 1;
-					newStructure.add(insertAt, leaf);
-				} else {
-					// direct insertion
-					newStructure.add(0, leaf);
-				}
-			} else {
-				orphans(where);
-				parent.parent.leaf.insert(leaf, this);
-			}
-		}
-
-		void orphans(Leaf where) {
-			List<Leaf> orphans = null;
-			int insertDeletionsIndex = 0;
-			if ((where == null && !newStructure.isEmpty()) || newStructure.size() == 1) {
-				orphans = newStructure;
-			} else if (newStructure.size() > 1) {
-				insertDeletionsIndex = exactIndex(newStructure, where) + 1;
-				orphans = newStructure.subList(insertDeletionsIndex, newStructure.size());
-			}
-			if (orphans != null) {
-				List<Leaf> newOrphans = new ArrayList<JsonDiff.Leaf>();
-				for (Leaf orphan : orphans) {
-					orphan.parent.orphan();
-					Node clone = orphan.parent.clone();
-					Leaf leafClone = new Leaf(clone, orphan.val);
-					clone.leaf = leafClone;
-					leafClone.oper = Oper.DELETE;
-					newOrphans.add(leafClone);
-				}
-				orphans.clear();
-				newStructure.addAll(insertDeletionsIndex, newOrphans);
-			}
-		}
-
-		@Override
-		public int hashCode() {
-			int i = parent.hashCode;
-			if (val.isJsonArray()) {
-				// for arr and obj we must hash in a type qualifier
-				// since otherwise changes between these kinds of
-				// nodes will be considered equal
-				i = i * 31 + ArrNode.class.hashCode();
-			} else if (val.isJsonObject()) {
-				i = i * 31 + ObjNode.class.hashCode();
-			} else {
-				i = i * 31 + (val.isJsonPrimitive() || val.isJsonNull() ? val.hashCode() : 0);
-			}
-			return i;
-		}
-
-		@Override
-		public String toString() {
-
-			StringBuilder bld = new StringBuilder(newStructure.size() + "->");
-
-			bld.append("LEAF");
-			if (parent != null && parent instanceof ArrNode) {
-				parent.toPathEl(bld);
-			}
-			bld.append("<");
-			if (oper != null) {
-				bld.append(oper);
-				bld.append("_");
-			}
-			if (parent != null && parent instanceof ObjNode) {
-				parent.toPathEl(bld);
-				bld.append(":");
-				bld.append(val);
-			} else if (val.isJsonPrimitive() || val.isJsonNull()) {
-				bld.append("{");
-				bld.append(val);
-				bld.append("}");
-			}
-			bld.append("_");
-			bld.append(hashCode());
-			bld.append(">");
-			bld.append("\n");
-
-			return bld.toString();
-
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			return hashCode() == ((Leaf) obj).hashCode();
-		}
-
-		@Override
-		public int compareTo(Leaf o) {
-			return hashCode() - o.hashCode();
-		}
-
-	}
-
-	private static abstract class Node implements Cloneable {
-
-		// keep the original hash code since we'll be unsetting the parent leaf
-		int hashCode, parentHashCode;
-
-		Node parent;
-		Leaf leaf;
-
-		Node(Node parent) {
-			this.parent = parent;
-		}
-
-		boolean isOrphan() {
-			return parent == null;
-		}
-
-		void orphan() {
-			parent = null;
-			if (leaf != null) {
-				for (Leaf c : leaf.newStructure) {
-					c.parent.orphan();
-				}
-			}
-		}
-
-		abstract void toPathEl(StringBuilder bld);
-
-		abstract int doHash(boolean indexed);
-
-		@Override
-		public int hashCode() {
-			return doHash(false);
-		}
-
-		@Override
-		protected Node clone() {
-			try {
-				return (Node) super.clone();
-			} catch (CloneNotSupportedException e) {
-				return null;
-			}
-		}
-	}
-
-	private static class ObjNode extends Node {
-
-		final String key;
-
-		ObjNode(Node parent, String key) {
-			super(parent);
-			this.key = key;
-		}
-
-		@Override
-		void toPathEl(StringBuilder bld) {
-			bld.append(key);
-		}
-
-		@Override
-		int doHash(boolean indexed) {
-
-			// just pass through the arguments as is since
-			// it's the arr node that alters them.
-			int i = (parent == null) ? 0 : parent.doHash(indexed);
-
-			i = i * 31 + ObjNode.class.hashCode();
-			i = i * 31 + key.hashCode();
-			return i;
-
-		}
-
-		@Override
-		public String toString() {
-			return key;
-		}
-
-	}
-
-	private static class ArrNode extends Node {
-
-		int index;
-
-		ArrNode(Node parent, int index) {
-			super(parent);
-			this.index = index;
-		}
-
-		@Override
-		void toPathEl(StringBuilder bld) {
-			bld.append("[");
-			bld.append(index);
-			bld.append("]");
-		}
-
-		void toPathEl(StringBuilder bld, Oper oper, boolean last) {
-			bld.append("[");
-			bld.append(index);
-			bld.append("]");
-		}
-
-		@Override
-		int doHash(boolean indexed) {
-
-			// this must either be the first node in which case passing
-			// false to lastArrNode must be correct, or it isn't
-			// in which case passing false is also correct.
-			int i = (parent == null) ? 0 : parent.doHash(indexed);
-
-			i = i * 31 + ArrNode.class.hashCode();
-			if (indexed) {
-				int adjusted = index;
-				i = i * 31 + adjusted;
-			}
-			return i;
-
-		}
-
-		@Override
-		public String toString() {
-			return "" + index;
-		}
-
-	}
-
-	private static class Root extends Node {
-
-		Root() {
-			super(null);
-		}
-
-		@Override
-		void toPathEl(StringBuilder bld) {
-		}
-
-		@Override
-		int doHash(boolean indexed) {
-			return 0;
-		}
-
-		@Override
-		public String toString() {
-			return "root";
-		}
-
-	}
-
-	private static Comparator<Entry<String, JzonElement>> OBJECT_KEY_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
+	static Comparator<Entry<String, JzonElement>> OBJECT_KEY_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
 
 		@Override
 		public int compare(Entry<String, JzonElement> o1, Entry<String, JzonElement> o2) {
