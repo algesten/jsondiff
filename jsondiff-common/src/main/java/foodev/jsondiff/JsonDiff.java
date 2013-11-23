@@ -1,6 +1,7 @@
 package foodev.jsondiff;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -66,6 +67,18 @@ import foodev.jsondiff.jsonwrap.Wrapper;
  * 
  */
 public class JsonDiff {
+	
+	static final String MOD = "~";
+
+	static class Instruction {
+		Oper oper;
+		int index;
+		String key;
+
+		boolean isIndexed() {
+			return index > -1;
+		}
+	}
 
 	static final Logger LOG = Logger.getLogger(JsonDiff.class.getName());
 
@@ -75,9 +88,9 @@ public class JsonDiff {
 
 		@Override
 		public int compare(Entry<String, JzonElement> o1, Entry<String, JzonElement> o2) {
-			if (o1.getKey().startsWith("~") && !o2.getKey().startsWith("~")) {
+			if (o1.getKey().startsWith(MOD) && !o2.getKey().startsWith(MOD)) {
 				return 1;
-			} else if (!o1.getKey().startsWith("~") && o2.getKey().startsWith("~")) {
+			} else if (!o1.getKey().startsWith(MOD) && o2.getKey().startsWith(MOD)) {
 				return -1;
 			}
 			return o1.getKey().compareTo(o2.getKey());
@@ -93,10 +106,23 @@ public class JsonDiff {
 		}
 	};
 
+	private Visitor visitor;
+
 	JsonDiff(Wrapper factory) {
 		this.factory = factory;
 	}
 
+	boolean accept(Leaf leaf, JzonArray instructions, JzonObject childPatch) {
+		JzonObject object = (JzonObject) factory.parse(leaf.val.toString());
+		JzonObject patch = factory.createJsonObject();
+		patch.add(MOD , instructions);
+		if (!childPatch.entrySet().isEmpty()) {
+			patch.entrySet().addAll((Collection) childPatch.entrySet());
+		}
+		apply(object, patch);
+		return visitor.shouldCreatePatch(leaf.val.unwrap(), object.unwrap());
+	}
+	
 	void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
 
 		JzonObject patch = (JzonObject) patchEl;
@@ -105,14 +131,14 @@ public class JsonDiff {
 		for (Entry<String, JzonElement> entry : memb) {
 			String key = entry.getKey();
 			JzonElement value = entry.getValue();
-			if (key.startsWith("~")) {
+			if (key.startsWith(MOD)) {
 				JzonElement partialInstructions = entry.getValue();
 				if (!partialInstructions.isJsonArray()) {
 					throw new IllegalArgumentException();
 				}
 				JzonArray array = (JzonArray) partialInstructions;
 				JzonElement applyTo;
-				if (key.equals("~")) {
+				if (key.equals(MOD)) {
 					applyTo = origEl;
 				} else if (origEl.isJsonArray()) {
 					int index = Integer.parseInt(key.substring(1));
@@ -178,69 +204,6 @@ public class JsonDiff {
 
 	}
 
-	Instruction create(String childKey) {
-		Instruction instruction = new Instruction();
-		if (childKey.startsWith("-")) {
-			instruction.key = childKey.substring(1);
-			instruction.index = isIndexed(instruction.key);
-			instruction.oper = Oper.DELETE;
-		} else if (childKey.startsWith("+")) {
-			instruction.key = childKey.substring(1);
-			instruction.index = isIndexed(instruction.key);
-			instruction.oper = Oper.INSERT;
-		} else {
-			instruction.key = childKey;
-			instruction.index = isIndexed(instruction.key);
-			instruction.oper = Oper.SET;
-		}
-		return instruction;
-	}
-
-	static class Instruction {
-		Oper oper;
-		int index;
-		String key;
-
-		boolean isIndexed() {
-			return index > -1;
-		}
-	}
-	
-	void checkIndex(JzonElement applyTo, int index) {
-		if (((JzonArray) applyTo).size() < index) {
-			throw new IllegalArgumentException();
-		}
-	}
-
-	void applyPartial(JzonElement applyTo, Instruction instruction, JzonElement value) {
-		if (instruction.oper == Oper.DELETE) {
-			if (instruction.isIndexed()) {
-				if (((JzonArray) applyTo).size() <= instruction.index) {
-					throw new IllegalArgumentException("Wrong index " + instruction.index + " for " + applyTo);
-				}
-				((JzonArray) applyTo).remove(instruction.index);
-			} else {
-				((JzonObject) applyTo).remove(instruction.key);
-			}
-		} else if (instruction.oper == Oper.INSERT) {
-			if (instruction.isIndexed()) {
-				if (((JzonArray) applyTo).size() < instruction.index) {
-					throw new IllegalArgumentException("Wrong index " + instruction.index + " for " + applyTo);
-				}
-				((JzonArray) applyTo).insert(instruction.index, value);
-			} else {
-				((JzonObject) applyTo).add(instruction.key, value);
-			}
-		} else if (applyTo.isJsonArray()) {
-			if (((JzonArray) applyTo).size() <= instruction.index) {
-				throw new IllegalArgumentException("Wrong index " + instruction.index + " for " + applyTo);
-			}
-			((JzonArray) applyTo).set(instruction.index, value);
-		} else {
-			((JzonObject) applyTo).add(instruction.key, value);
-		}
-	}
-
 	/**
 	 * Patches the first argument with the second. Accepts two GSON {@link JsonObject} or (if jar is provided) a Jackson style {@link ObjectNode}.
 	 * 
@@ -285,12 +248,57 @@ public class JsonDiff {
 
 	}
 
-	int isIndexed(String childKey) {
-		try {
-			return Integer.parseInt(childKey);
-		} catch (NumberFormatException e) {
-			return -1;
+	void applyPartial(JzonElement applyTo, Instruction instruction, JzonElement value) {
+		if (instruction.oper == Oper.DELETE) {
+			if (instruction.isIndexed()) {
+				if (((JzonArray) applyTo).size() <= instruction.index) {
+					throw new IllegalArgumentException("Wrong index " + instruction.index + " for " + applyTo);
+				}
+				((JzonArray) applyTo).remove(instruction.index);
+			} else {
+				((JzonObject) applyTo).remove(instruction.key);
+			}
+		} else if (instruction.oper == Oper.INSERT) {
+			if (instruction.isIndexed()) {
+				if (((JzonArray) applyTo).size() < instruction.index) {
+					throw new IllegalArgumentException("Wrong index " + instruction.index + " for " + applyTo);
+				}
+				((JzonArray) applyTo).insert(instruction.index, value);
+			} else {
+				((JzonObject) applyTo).add(instruction.key, value);
+			}
+		} else if (applyTo.isJsonArray()) {
+			if (((JzonArray) applyTo).size() <= instruction.index) {
+				throw new IllegalArgumentException("Wrong index " + instruction.index + " for " + applyTo);
+			}
+			((JzonArray) applyTo).set(instruction.index, value);
+		} else {
+			((JzonObject) applyTo).add(instruction.key, value);
 		}
+	}
+
+	void checkIndex(JzonElement applyTo, int index) {
+		if (((JzonArray) applyTo).size() < index) {
+			throw new IllegalArgumentException();
+		}
+	}
+
+	Instruction create(String childKey) {
+		Instruction instruction = new Instruction();
+		if (childKey.startsWith("-")) {
+			instruction.key = childKey.substring(1);
+			instruction.index = isIndexed(instruction.key);
+			instruction.oper = Oper.DELETE;
+		} else if (childKey.startsWith("+")) {
+			instruction.key = childKey.substring(1);
+			instruction.index = isIndexed(instruction.key);
+			instruction.oper = Oper.INSERT;
+		} else {
+			instruction.key = childKey;
+			instruction.index = isIndexed(instruction.key);
+			instruction.oper = Oper.SET;
+		}
+		return instruction;
 	}
 
 	JzonObject diff(JzonElement fromEl, JzonElement toEl) {
@@ -405,7 +413,7 @@ public class JsonDiff {
 
 		return diff.unwrap();
 	}
-
+	
 	/**
 	 * Runs a diff on the two given JSON objects given as string to produce another JSON object with instructions of how to transform the first argument to the second. Both from/to
 	 * are expected to be objects {}.
@@ -434,6 +442,9 @@ public class JsonDiff {
 		// create leaf for this part
 		Leaf leaf = new Leaf(parent, el);
 		leaf.factory = factory;
+		if (visitor != null) {
+			leaf.visitor = this;
+		}
 		leaves.add(leaf);
 		parent.leaf = leaf;
 
@@ -466,6 +477,21 @@ public class JsonDiff {
 		}
 		leaf.init();
 		return leaf;
+	}
+	public Visitor<?> getVisitor() {
+		return visitor;
+	}
+
+	int isIndexed(String childKey) {
+		try {
+			return Integer.parseInt(childKey);
+		} catch (NumberFormatException e) {
+			return -1;
+		}
+	}
+
+	public void setVisitor(Visitor<?> visitor) {
+		this.visitor = visitor;
 	}
 
 }

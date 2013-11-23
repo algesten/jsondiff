@@ -46,11 +46,11 @@ class Leaf implements Comparable<Leaf> {
 				if (leaf.oper == null) {
 					leaf.oper = Oper.SET;
 				}
-//				int index = exactIndex(attach.newStructure, leaf);
-//				if (index > -1) {
-//					atIndex--;
-//					attach.newStructure.remove(index);
-//				}
+				// int index = exactIndex(attach.newStructure, leaf);
+				// if (index > -1) {
+				// atIndex--;
+				// attach.newStructure.remove(index);
+				// }
 				attach.newStructure.add(atIndex, leaf);
 				if (JsonDiff.LOG.isLoggable(Level.FINEST))
 					JsonDiff.LOG.finest("ATT " + leaf + " @" + this);
@@ -81,14 +81,13 @@ class Leaf implements Comparable<Leaf> {
 		}
 		return false;
 	}
-	
+
 	void rehash() {
 		parent.hashCode = parent.hashCode();
 		for (Leaf child : newStructure) {
 			child.rehash();
 		}
 	}
-
 
 	Leaf checkCancelation(Leaf possibleCancellation) {
 		for (Iterator<Leaf> iterator2 = newStructure.iterator(); iterator2.hasNext();) {
@@ -126,6 +125,8 @@ class Leaf implements Comparable<Leaf> {
 		return hashCode() - o.hashCode();
 	}
 
+	JsonDiff visitor;
+
 	JzonArray createPatch(JzonObject patch) {
 		JzonArray instructions = factory.createJsonArray();
 		if (oper != Oper.DELETE) {
@@ -158,6 +159,10 @@ class Leaf implements Comparable<Leaf> {
 					JzonObject childPatch = factory.createJsonObject();
 					JzonArray childInstructions = child.createPatch(childPatch);
 					if (childInstructions.size() > 0) {
+						if (visitor != null && !child.val.isJsonPrimitive()
+								&& !visitor.accept(child, childInstructions, childPatch)) {
+							continue;
+						}
 						patch.add("~" + key, childInstructions);
 					}
 					if (!childPatch.entrySet().isEmpty()) {
@@ -265,6 +270,7 @@ class Leaf implements Comparable<Leaf> {
 				orphan.parent.orphan();
 				Node clone = orphan.parent.clone();
 				Leaf leafClone = new Leaf(clone, orphan.val);
+				leafClone.visitor = visitor;
 				clone.leaf = leafClone;
 				leafClone.oper = Oper.DELETE;
 				newOrphans.add(leafClone);
