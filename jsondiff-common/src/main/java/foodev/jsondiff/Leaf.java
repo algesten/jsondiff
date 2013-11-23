@@ -76,10 +76,19 @@ class Leaf implements Comparable<Leaf> {
 					deleted.newStructure.add(orphan);
 				}
 			}
+			deleted.rehash();
 			return true;
 		}
 		return false;
 	}
+	
+	void rehash() {
+		parent.hashCode = parent.hashCode();
+		for (Leaf child : newStructure) {
+			child.rehash();
+		}
+	}
+
 
 	Leaf checkCancelation(Leaf possibleCancellation) {
 		for (Iterator<Leaf> iterator2 = newStructure.iterator(); iterator2.hasNext();) {
