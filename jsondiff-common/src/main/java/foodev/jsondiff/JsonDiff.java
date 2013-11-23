@@ -84,7 +84,7 @@ public class JsonDiff {
 
 	protected final Wrapper factory;
 
-	Comparator<Entry<String, JzonElement>> INSTRUCTIONS_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
+	final static Comparator<Entry<String, JzonElement>> INSTRUCTIONS_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
 
 		@Override
 		public int compare(Entry<String, JzonElement> o1, Entry<String, JzonElement> o2) {
@@ -97,7 +97,7 @@ public class JsonDiff {
 		}
 	};
 
-	static Comparator<Entry<String, JzonElement>> OBJECT_KEY_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
+	final static Comparator<Entry<String, JzonElement>> OBJECT_KEY_COMPARATOR = new Comparator<Entry<String, JzonElement>>() {
 
 		@Override
 		public int compare(Entry<String, JzonElement> o1, Entry<String, JzonElement> o2) {
