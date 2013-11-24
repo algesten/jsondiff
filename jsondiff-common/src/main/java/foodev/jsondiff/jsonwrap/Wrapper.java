@@ -1,20 +1,39 @@
 package foodev.jsondiff.jsonwrap;
 
-
+/**
+ * Factory wrapper interface for multiple json implementations.
+ * 
+ * @since 1.0.0
+ * @version @PROJECT_VERSION@
+ */
 public interface Wrapper {
 
-    JzonElement parse(String json);
+	/**
+	 * Parses an element given a string.
+	 * 
+	 * @param json
+	 *            - string
+	 * @return parsed element
+	 */
+	JzonElement parse(String json);
 
+	/**
+	 * Wraps a given json element.
+	 * 
+	 * @param o
+	 *            - element to wrap
+	 * @return the wrapped element
+	 */
+	JzonElement wrap(Object o);
 
-    boolean accepts(Object o);
+	/**
+	 * @return a new implementation independent json object
+	 */
+	JzonObject createJsonObject();
 
-
-    JzonElement wrap(Object o);
-
-
-    JzonObject createJsonObject();
-
-
-    JzonArray createJsonArray();
+	/**
+	 * @return a new implementation independent json array
+	 */
+	JzonArray createJsonArray();
 
 }

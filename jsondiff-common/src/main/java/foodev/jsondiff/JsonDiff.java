@@ -67,7 +67,7 @@ import foodev.jsondiff.jsonwrap.Wrapper;
  * 
  */
 public class JsonDiff {
-	
+
 	static final String MOD = "~";
 
 	static class Instruction {
@@ -115,14 +115,14 @@ public class JsonDiff {
 	boolean accept(Leaf leaf, JzonArray instructions, JzonObject childPatch) {
 		JzonObject object = (JzonObject) factory.parse(leaf.val.toString());
 		JzonObject patch = factory.createJsonObject();
-		patch.add(MOD , instructions);
+		patch.add(MOD, instructions);
 		if (!childPatch.entrySet().isEmpty()) {
 			patch.entrySet().addAll((Collection) childPatch.entrySet());
 		}
 		apply(object, patch);
 		return visitor.shouldCreatePatch(leaf.val, object);
 	}
-	
+
 	void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
 
 		JzonObject patch = (JzonObject) patchEl;
@@ -413,7 +413,7 @@ public class JsonDiff {
 
 		return diff.unwrap();
 	}
-	
+
 	/**
 	 * Runs a diff on the two given JSON objects given as string to produce another JSON object with instructions of how to transform the first argument to the second. Both from/to
 	 * are expected to be objects {}.
@@ -478,6 +478,11 @@ public class JsonDiff {
 		leaf.init();
 		return leaf;
 	}
+
+	/**
+	 * @return the registered visitor if any
+	 * @see Visitor
+	 */
 	public Visitor getVisitor() {
 		return visitor;
 	}
@@ -490,6 +495,13 @@ public class JsonDiff {
 		}
 	}
 
+	/**
+	 * Registers a new visitor.
+	 * 
+	 * @param visitor
+	 *            - visitor to register
+	 * @see Visitor
+	 */
 	public void setVisitor(Visitor visitor) {
 		this.visitor = visitor;
 	}
