@@ -1,6 +1,8 @@
 package foodev.jsondiff;
 
-public interface Visitor<E> {
+import foodev.jsondiff.jsonwrap.JzonElement;
 
-	boolean shouldCreatePatch(E from, E to);
+public interface Visitor {
+
+	boolean shouldCreatePatch(JzonElement from, JzonElement to);
 }

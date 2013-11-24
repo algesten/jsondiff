@@ -120,7 +120,7 @@ public class JsonDiff {
 			patch.entrySet().addAll((Collection) childPatch.entrySet());
 		}
 		apply(object, patch);
-		return visitor.shouldCreatePatch(leaf.val.unwrap(), object.unwrap());
+		return visitor.shouldCreatePatch(leaf.val, object);
 	}
 	
 	void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
@@ -478,7 +478,7 @@ public class JsonDiff {
 		leaf.init();
 		return leaf;
 	}
-	public Visitor<?> getVisitor() {
+	public Visitor getVisitor() {
 		return visitor;
 	}
 
@@ -490,7 +490,7 @@ public class JsonDiff {
 		}
 	}
 
-	public void setVisitor(Visitor<?> visitor) {
+	public void setVisitor(Visitor visitor) {
 		this.visitor = visitor;
 	}
 
