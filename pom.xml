@@ -79,7 +79,7 @@
 			<url>https://github.com/nachogmd</url>
 		</developer>
 	</developers>
-	
+
 	<distributionManagement>
 		<repository>
 			<id>algesten-github-repo</id>
