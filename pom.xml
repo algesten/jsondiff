@@ -2,42 +2,31 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.github.foodev</groupId>
+	<groupId>foodev</groupId>
 	<artifactId>jsondiff-parent</artifactId>
 	<packaging>pom</packaging>
 	<version>2.0-SNAPSHOT</version>
 	<name>Foodev JSONDiff Parent</name>
-	<url>https://github.com/algesten/jsondiff/</url>
-	<description>Structural JSON diff/patch tool</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
-
+	
 	<modules>
 		<module>./jsondiff-common</module>
 		<module>./gsondiff</module>
 		<module>./jacksondiff</module>
 	</modules>
 
-	<scm>
-		<connection>scm:git:git://github.com/algesten/jsondiff.git</connection>
-		<developerConnection>scm:git:git://github.com/algesten/jsondiff.git</developerConnection>
-	</scm>
-
-	<issueManagement>
-		<system>github</system>
-		<url>https://github.com/algesten/jsondiff/issues</url>
-	</issueManagement>
-
-	<licenses>
-		<license>
-			<name>The Apache Software License, Version 2.0</name>
-			<url>https://github.com/algesten/jsondiff/blob/master/LICENSE.txt</url>
-		</license>
-	</licenses>
-
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources/</directory>
+				<includes>
+					<include>**/*.*</include>
+				</includes>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -53,6 +42,9 @@
 
 	<dependencies>
 
+
+		<!-- TEST BELOW -->
+
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -62,24 +54,18 @@
 
 	</dependencies>
 
-	<developers>
-		<developer>
+	<scm>
+		<connection>scm:git:git://github.com/algesten/jsondiff.git</connection>
+		<developerConnection>scm:git:git://github.com/algesten/jsondiff.git</developerConnection>
+	</scm>
+
+	<repositories>
+		<repository>
 			<id>algesten</id>
-			<name>Martin Algesten</name>
-			<url>https://github.com/algesten</url>
-		</developer>
-		<developer>
-			<id>deverton</id>
-			<name>Dan Everton</name>
-			<url>https://github.com/deverton</url>
-		</developer>
-		<developer>
-			<id>nachogmd</id>
-			<name>Nacho G. Mac Dowell</name>
-			<url>https://github.com/nachogmd</url>
-		</developer>
-	</developers>
-	
+			<url>http://algesten.github.com/maven2/releases</url>
+		</repository>
+	</repositories>
+
 	<distributionManagement>
 		<repository>
 			<id>algesten-github-repo</id>
