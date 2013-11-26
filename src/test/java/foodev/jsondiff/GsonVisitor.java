@@ -2,14 +2,10 @@ package foodev.jsondiff;
 
 import com.google.gson.JsonElement;
 
-import foodev.jsondiff.jsonwrap.JzonElement;
-
-public class GsonVisitor implements Visitor {
+public class GsonVisitor implements Visitor<JsonElement> {
 
 	@Override
-	public boolean shouldCreatePatch(JzonElement fromNative, JzonElement toNative) {
-		JsonElement from = (JsonElement) fromNative.unwrap();
-		JsonElement to = (JsonElement) toNative.unwrap();
+	public boolean shouldCreatePatch(JsonElement from, JsonElement to) {
 		if (from.isJsonObject() && to.isJsonObject()) {
 			JsonElement fromId = from.getAsJsonObject().get("id");
 			JsonElement toId = to.getAsJsonObject().get("id");

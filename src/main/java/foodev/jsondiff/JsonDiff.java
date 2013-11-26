@@ -106,6 +106,7 @@ public class JsonDiff {
 		}
 	};
 
+	@SuppressWarnings("rawtypes")
 	private Visitor visitor;
 
 	JsonDiff(Wrapper factory) {
@@ -121,7 +122,7 @@ public class JsonDiff {
 			patch.entrySet().addAll((Collection) childPatch.entrySet());
 		}
 		apply(object, patch);
-		return visitor.shouldCreatePatch(leaf.val, object);
+		return visitor.shouldCreatePatch(leaf.val.unwrap(), object.unwrap());
 	}
 
 	void apply(JzonElement origEl, JzonElement patchEl) throws IllegalArgumentException {
@@ -484,7 +485,7 @@ public class JsonDiff {
 	 * @return the registered visitor if any
 	 * @see Visitor
 	 */
-	public Visitor getVisitor() {
+	public Visitor<?> getVisitor() {
 		return visitor;
 	}
 
@@ -503,7 +504,7 @@ public class JsonDiff {
 	 *            - visitor to register
 	 * @see Visitor
 	 */
-	public void setVisitor(Visitor visitor) {
+	public void setVisitor(Visitor<?> visitor) {
 		this.visitor = visitor;
 	}
 

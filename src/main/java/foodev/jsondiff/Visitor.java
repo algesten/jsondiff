@@ -1,6 +1,5 @@
 package foodev.jsondiff;
 
-import foodev.jsondiff.jsonwrap.JzonElement;
 
 /**
  * Interface that allows filtering patch instructions.
@@ -8,7 +7,7 @@ import foodev.jsondiff.jsonwrap.JzonElement;
  * @since 2.0.0
  * @version @PROJECT_VERSION@
  */
-public interface Visitor {
+public interface Visitor<E> {
 
 	/**
 	 * Should a patch instruction be created for an element like <code>to</code> if its destiny is an element like <code>to</code>?
@@ -19,5 +18,5 @@ public interface Visitor {
 	 *            - to element
 	 * @return if the instruction should be created
 	 */
-	boolean shouldCreatePatch(JzonElement from, JzonElement to);
+	boolean shouldCreatePatch(E from, E to);
 }
