@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.github.foodev</groupId>
-	<artifactId>jsondiff-parent</artifactId>
+	<artifactId>jsondiff</artifactId>
 	<packaging>jar</packaging>
 	<version>2.0.0-SNAPSHOT</version>
 	<name>Foodev JSONDiff Parent</name>
