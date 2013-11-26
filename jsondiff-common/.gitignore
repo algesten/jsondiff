@@ -1,8 +1,0 @@
-target
-site
-.classpath
-.project
-.settings
-/www-test
-/gwt-unitCache
-/war
