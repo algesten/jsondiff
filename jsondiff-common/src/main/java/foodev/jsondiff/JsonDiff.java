@@ -112,7 +112,8 @@ public class JsonDiff {
 		this.factory = factory;
 	}
 
-	boolean accept(Leaf leaf, JzonArray instructions, JzonObject childPatch) {
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+    boolean accept(Leaf leaf, JzonArray instructions, JzonObject childPatch) {
 		JzonObject object = (JzonObject) factory.parse(leaf.val.toString());
 		JzonObject patch = factory.createJsonObject();
 		patch.add(MOD, instructions);

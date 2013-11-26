@@ -312,11 +312,11 @@ class Leaf implements Comparable<Leaf> {
 		}
 	}
 
-	protected static int exactIndex(Collection c, Object check) {
+	protected static int exactIndex(Collection<Leaf> c, Leaf check) {
 		int i = -1;
-		for (Object object : c) {
+		for (Leaf l : c) {
 			i++;
-			if (object == check) {
+			if (l == check) {
 				return i;
 			}
 		}

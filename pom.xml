@@ -13,9 +13,9 @@
 	</properties>
 	
 	<modules>
-		<module>./jsondiff-common</module>
-		<module>./gsondiff</module>
-		<module>./jacksondiff</module>
+		<module>jsondiff-common</module>
+		<module>gsondiff</module>
+		<module>jacksondiff</module>
 	</modules>
 
 	<build>
