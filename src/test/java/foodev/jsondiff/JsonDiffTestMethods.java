@@ -470,10 +470,10 @@ public abstract class JsonDiffTestMethods extends TestCase {
     public void testArrToNumeric() {
 
         String d = diff("{a: [1,2]}", "{a: 1}");
-        Assert.assertEquals("{\"~\":[{\"a\":1}]}", d);
 
         String p = apply("{a: [1,2]}", d);
         Assert.assertEquals("{\"a\":1}", p);
+        Assert.assertEquals("{\"~\":[{\"a\":1}]}", d);
 
     }
 
@@ -737,7 +737,7 @@ public abstract class JsonDiffTestMethods extends TestCase {
         Assert.assertEquals(to, p);
 
         Assert.assertEquals(
-                "{\"p:timeFrame\":{\"~g:relatedTime\":[{\"-1\":0}],\"g:relatedTime\":{\"~0\":[{\"relativePosition\":\"Contains\"}],\"0\":{\"~g:TimeInstant\":[{\"g:id\":\"ID_1gu4yx14on411od9yrrwbraia\"},{\"g:identifier\":{\"codeSpace\":\"JP1_02\",\"text\":\"D-day\"}},{\"g:timePosition\":\"2010-10-11T17:51:52.204Z\"},{\"-g:relatedTime\":0}]}}}}",
+                "{\"p:timeFrame\":{\"~g:relatedTime\":[{\"-1\":0}],\"g:relatedTime\":{\"~0\":[{\"relativePosition\":\"Contains\"}],\"0\":{\"~g:TimeInstant\":[{\"g:id\":\"ID_1gu4yx14on411od9yrrwbraia\"},{\"g:timePosition\":\"2010-10-11T17:51:52.204Z\"},{\"-g:relatedTime\":0}],\"g:TimeInstant\":{\"~g:identifier\":[{\"codeSpace\":\"JP1_02\"},{\"text\":\"D-day\"}]}}}}}",
                 d);
 
     }
@@ -750,10 +750,10 @@ public abstract class JsonDiffTestMethods extends TestCase {
         String to = "{\"b\":{\"id\":\"id2\"}}";
 
         String d = diff(from, to);
-        Assert.assertEquals("{\"~\":[{\"b\":{\"id\":\"id2\"}}]}", d);
 
         String p = apply(from, d);
         Assert.assertEquals(to, p);
+        Assert.assertEquals("{\"~\":[{\"b\":{\"id\":\"id2\"}}]}", d);
 
     }
 
@@ -765,10 +765,10 @@ public abstract class JsonDiffTestMethods extends TestCase {
         String to = "{\"b\":[1,2]}";
 
         String d = diff(from, to);
-        Assert.assertEquals("{\"~\":[{\"b\":[1,2]}]}", d);
-
+        
         String p = apply(from, d);
         Assert.assertEquals(to, p);
+        Assert.assertEquals("{\"~\":[{\"b\":[1,2]}]}", d);
 
     }
 
@@ -780,10 +780,10 @@ public abstract class JsonDiffTestMethods extends TestCase {
         String to = "{\"a\":[{\"b\":{\"id\":\"id2\"}}]}";
 
         String d = diff(from, to);
-        Assert.assertEquals("{\"~a\":[{\"-1\":0}],\"a\":{\"~0\":[{\"b\":{\"id\":\"id2\"}}]}}", d);
 
         String p = apply(from, d);
         Assert.assertEquals(to, p);
+        Assert.assertEquals("{\"~a\":[{\"-1\":0}],\"a\":{\"~0\":[{\"b\":{\"id\":\"id2\"}}]}}", d);
 
     }
     
@@ -852,5 +852,45 @@ public abstract class JsonDiffTestMethods extends TestCase {
                 } catch (NullPointerException npe) {
                         Assert.fail("Caught NPE");
                 }
+        }
+
+        @Test
+        public void testRecoveryTraversal() {
+        	String from = "{\r\n" + 
+        			"	\"initialStatement\" : {\r\n" + 
+        			"		\"shareHolders\" : [{\r\n" + 
+        			"				\"cessionary\" : {\"a\":1}\r\n" + 
+        			"			}, {\r\n" + 
+        			"				\"cessionary\" : {\"a\":2}\r\n" + 
+        			"			}\r\n" + 
+        			"		],\r\n" + 
+        			"		\"territory\" : \"+2WL-FR\"\r\n" + 
+        			"	}\r\n" + 
+        			"}\r\n" + 
+        			"";
+        	String to = "{\"initialStatement\":{\"shareHolders\":[{\"cessionary\":{\"a\":1}}],\"territory\":\"+2WL\"}}";
+        	String d = diff(from, to);
+        	String actual = apply(from, d);
+        	Assert.assertEquals(to, actual);
+        }
+        
+        @Test
+        public void testRecoveryTraversal2() {
+        	String from = "{\r\n" + 
+        			"	\"initialStatement\" : {\r\n" + 
+        			"		\"shareHolders\" : [{\r\n" + 
+        			"				\"cessionary\" : {\"a\":2}\r\n" + 
+        			"			}, {\r\n" + 
+        			"				\"cessionary\" : {\"a\":1}\r\n" + 
+        			"			}\r\n" + 
+        			"		],\r\n" + 
+        			"		\"territory\" : \"+2WL-FR\"\r\n" + 
+        			"	}\r\n" + 
+        			"}\r\n" + 
+        			"";
+        	String to = "{\"initialStatement\":{\"shareHolders\":[{\"cessionary\":{\"a\":1}}],\"territory\":\"+2WL\"}}";
+        	String d = diff(from, to);
+        	String actual = apply(from, d);
+        	Assert.assertEquals(to, actual);
         }
 }
