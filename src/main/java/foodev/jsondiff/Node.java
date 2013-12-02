@@ -29,7 +29,7 @@ abstract class Node implements Cloneable {
 	}
 
 	boolean isOrphan() {
-		return parent == null;
+		return hashCode != 0 && parent == null;
 	}
 
 	void orphan() {
@@ -38,6 +38,7 @@ abstract class Node implements Cloneable {
 			for (Leaf c : leaf.newStructure) {
 				c.parent.orphan();
 			}
+			leaf.newStructure.clear();
 		}
 	}
 }
