@@ -15,7 +15,7 @@ class ArrNode extends Node {
 		// this must either be the first node in which case passing
 		// false to lastArrNode must be correct, or it isn't
 		// in which case passing false is also correct.
-		int i = (parent == null) ? 0 : parent.doHash(indexed);
+		int i = parent.doHash(indexed);
 
 		i = i * 31 + ArrNode.class.hashCode();
 		if (indexed) {

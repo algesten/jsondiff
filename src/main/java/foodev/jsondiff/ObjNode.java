@@ -14,7 +14,7 @@ class ObjNode extends Node {
 
 		// just pass through the arguments as is since
 		// it's the arr node that alters them.
-		int i = (parent == null) ? 0 : parent.doHash(indexed);
+		int i = parent.doHash(indexed);
 
 		i = i * 31 + ObjNode.class.hashCode();
 		i = i * 31 + key.hashCode();
