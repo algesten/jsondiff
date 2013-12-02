@@ -16,7 +16,7 @@ class Leaf implements Comparable<Leaf> {
 
 	Wrapper factory;
 
-	Node parent;
+	final Node parent;
 	JzonElement val;
 	Oper oper;
 
@@ -26,9 +26,10 @@ class Leaf implements Comparable<Leaf> {
 	Leaf(Node parent, JzonElement val) {
 		this.parent = parent;
 		this.val = val;
+		this.parent.leaf = this;
 	}
 
-	void attach(Leaf leaf, Leaf at) {
+	boolean attach(Leaf leaf, Leaf at) {
 		Leaf attach = this;
 		int myIndex = (parent.parent == null) ? 0 : exactIndex(parent.parent.leaf.newStructure, this);
 		int atIndex = (at == this) ? 0 : exactIndex(newStructure, at) + 1;
@@ -40,30 +41,28 @@ class Leaf implements Comparable<Leaf> {
 		if (leaf.parent.parentHashCode == attach.parent.hashCode) {
 			// direct attachment
 			if (leaf.oper != Oper.DELETE && attach.oper == Oper.DELETE) {
-				attach.parent.parent.leaf.attach(leaf, this);
-			} else {
-				leaf.parent.parent = attach.parent;
-				if (leaf.oper == null) {
-					leaf.oper = Oper.SET;
-				}
-				// int index = exactIndex(attach.newStructure, leaf);
-				// if (index > -1) {
-				// atIndex--;
-				// attach.newStructure.remove(index);
-				// }
-				attach.newStructure.add(atIndex, leaf);
-				if (JsonDiff.LOG.isLoggable(Level.FINEST))
-					JsonDiff.LOG.finest("ATT " + leaf + " @" + this);
+				return attach.parent.parent.leaf.attach(leaf, this);
 			}
-		} else {
-			parent.parent.leaf.attach(leaf, this);
+			leaf.parent.parent = attach.parent;
+			if (leaf.oper == null && (leaf.val.isJsonPrimitive() || leaf.val.isJsonNull())) {
+				leaf.oper = Oper.SET;
+			}
+			attach.newStructure.add(atIndex, leaf);
+			leaf.rehash();
+			if (JsonDiff.LOG.isLoggable(Level.FINE))
+				JsonDiff.LOG.info("ATT " + leaf + " @" + this);
+			return true;
 		}
+		if (parent.parent == null) {
+			return false;
+		}
+		return parent.parent.leaf.attach(leaf, this);
 	}
 
 	boolean cancelDelete(Leaf deleted, Leaf with) {
 		if (deleted.parent.hashCode == with.parent.hashCode) {
-			if (JsonDiff.LOG.isLoggable(Level.FINEST))
-				JsonDiff.LOG.finest("SET " + deleted + " @" + with);
+			if (JsonDiff.LOG.isLoggable(Level.FINE))
+				JsonDiff.LOG.info("SET " + deleted + " @" + with);
 			with.newStructure.clear();
 			deleted.oper = Oper.SET;
 			deleted.val = with.val;
@@ -72,9 +71,7 @@ class Leaf implements Comparable<Leaf> {
 			// recover deleted children (orphans)
 			for (Leaf orphan : deleted.children) {
 				orphan.parent.parent = deleted.parent;
-				if (exactIndex(deleted.newStructure, orphan) == -1) {
-					deleted.newStructure.add(orphan);
-				}
+				deleted.newStructure.add(orphan);
 			}
 			deleted.rehash();
 			return true;
@@ -84,7 +81,9 @@ class Leaf implements Comparable<Leaf> {
 
 	void rehash() {
 		parent.hashCode = parent.hashCode();
+		parent.parentHashCode = parent.parent.hashCode;
 		for (Leaf child : newStructure) {
+			child.parent.parent = parent;
 			child.rehash();
 		}
 	}
@@ -93,7 +92,7 @@ class Leaf implements Comparable<Leaf> {
 		for (Iterator<Leaf> iterator2 = newStructure.iterator(); iterator2.hasNext();) {
 			Leaf check = iterator2.next();
 			if (check != possibleCancellation) {
-				if (check.oper != Oper.DELETE && !check.parent.getClass().equals(possibleCancellation.parent.getClass())) {
+				if (!check.parent.getClass().equals(possibleCancellation.parent.getClass())) {
 					// type node change: cancellation
 					return check;
 				}
@@ -111,7 +110,7 @@ class Leaf implements Comparable<Leaf> {
 			if (child.oper == Oper.DELETE) {
 				Leaf cancelled = checkCancelation(child);
 				if (cancelled != null) {
-					if (!cancelled.val.equals(child.val)) {
+					if (cancelled.newStructure.isEmpty()) {
 						cancelled.oper = Oper.SET;
 					}
 					it.remove();
@@ -159,8 +158,7 @@ class Leaf implements Comparable<Leaf> {
 					JzonObject childPatch = factory.createJsonObject();
 					JzonArray childInstructions = child.createPatch(childPatch);
 					if (childInstructions.size() > 0) {
-						if (visitor != null && !child.val.isJsonPrimitive()
-								&& !visitor.accept(child, childInstructions, childPatch)) {
+						if (visitor != null && !child.val.isJsonPrimitive() && !visitor.accept(child, childInstructions, childPatch)) {
 							continue;
 						}
 						patch.add("~" + key, childInstructions);
@@ -181,20 +179,9 @@ class Leaf implements Comparable<Leaf> {
 	}
 
 	void delete(Leaf leaf, Leaf at) {
-		if (JsonDiff.LOG.isLoggable(Level.FINEST))
-			JsonDiff.LOG.finest("DELETE  @" + this);
+		if (JsonDiff.LOG.isLoggable(Level.FINE))
+			JsonDiff.LOG.info("DELETE " + leaf + " @" + this);
 		leaf.oper = Oper.DELETE;
-		if (leaf.isOrphan()) {
-			Leaf attach = this;
-			int atIndex = (at == this) ? 0 : exactIndex(newStructure, at) + 1;
-			if (leaf.parent.parentHashCode == attach.parent.hashCode) {
-				// direct attachment
-				leaf.parent.parent = attach.parent;
-				attach.newStructure.add(atIndex, leaf);
-			} else {
-				parent.parent.leaf.delete(leaf, this);
-			}
-		}
 		for (Leaf orphan : leaf.newStructure) {
 			orphan.parent.orphan();
 		}
@@ -232,8 +219,6 @@ class Leaf implements Comparable<Leaf> {
 		int hashCode = parent.hashCode;
 		int insCode = leaf.parent.parent.hashCode;
 		if (hashCode == 0 || insCode == hashCode) {
-			if (JsonDiff.LOG.isLoggable(Level.FINEST))
-				JsonDiff.LOG.finest("INSERT " + leaf + " @" + this);
 			// eligible for insertion - check for sets after building the new graph
 			leaf.oper = Oper.INSERT;
 			leaf.parent.parent = parent;
@@ -245,6 +230,8 @@ class Leaf implements Comparable<Leaf> {
 				// direct insertion
 				newStructure.add(0, leaf);
 			}
+			if (JsonDiff.LOG.isLoggable(Level.FINE))
+				JsonDiff.LOG.info("INSERTed " + leaf + " @" + this);
 		} else {
 			orphans(where);
 			parent.parent.leaf.insert(leaf, this);
@@ -267,13 +254,17 @@ class Leaf implements Comparable<Leaf> {
 		if (orphans != null) {
 			List<Leaf> newOrphans = new ArrayList<Leaf>();
 			for (Leaf orphan : orphans) {
-				orphan.parent.orphan();
-				Node clone = orphan.parent.clone();
-				Leaf leafClone = new Leaf(clone, orphan.val);
-				leafClone.visitor = visitor;
-				clone.leaf = leafClone;
-				leafClone.oper = Oper.DELETE;
-				newOrphans.add(leafClone);
+				if (orphan.oper != Oper.DELETE) {
+					orphan.parent.parent = null;
+					Node clone = orphan.parent.clone();
+					Leaf leafClone = new Leaf(clone, orphan.val);
+					leafClone.visitor = visitor;
+					clone.leaf = leafClone;
+					leafClone.oper = Oper.DELETE;
+					newOrphans.add(leafClone);
+				} else {
+					newOrphans.add(orphan);
+				}
 			}
 			orphans.clear();
 			newStructure.addAll(insertDeletionsIndex, newOrphans);
@@ -322,16 +313,22 @@ class Leaf implements Comparable<Leaf> {
 		}
 		return i;
 	}
-
+	
 	void recover(List<Leaf> fromLeaves) {
 		if (isOrphan()) {
 			int thisIndex = exactIndex(fromLeaves, this);
-			Leaf newParent = null;
+			recover(thisIndex, fromLeaves);
+		}
+	}
+
+	void recover(int thisIndex, List<Leaf> fromLeaves) {
+		if (isOrphan()) {
+			Leaf newParent = null;	
 			while (newParent == null || (oper != Oper.DELETE && newParent.oper == Oper.DELETE)) {
 				thisIndex--;
 				newParent = fromLeaves.get(thisIndex);
 				if (newParent.isOrphan()) {
-					newParent.recover(fromLeaves);
+					newParent.recover(thisIndex, fromLeaves);
 				}
 			}
 			while (newParent.parent.parent != null && newParent.parent.hashCode != parent.parentHashCode) {
@@ -340,9 +337,15 @@ class Leaf implements Comparable<Leaf> {
 					newParent.recover(fromLeaves);
 				}
 			}
-			if (JsonDiff.LOG.isLoggable(Level.FINEST))
-				JsonDiff.LOG.finest("RECOVER " + this + " @" + newParent);
-			newParent.attach(this, null);
+			if (newParent.oper == Oper.DELETE) {
+				return;
+			}
+			if (newParent.attach(this, null)) {
+				if (JsonDiff.LOG.isLoggable(Level.FINE))
+					JsonDiff.LOG.info("RECOVERed " + this + " @" + newParent);	
+			} else {
+				recover(thisIndex, fromLeaves);
+			}
 		}
 	}
 
@@ -360,17 +363,20 @@ class Leaf implements Comparable<Leaf> {
 			bld.append(oper);
 			bld.append("_");
 		}
-		if (parent != null && parent instanceof ObjNode) {
-			bld.append(parent.toString());
-			bld.append(":");
-			bld.append(val);
-		} else if (val.isJsonPrimitive() || val.isJsonNull()) {
+		if (val.isJsonPrimitive() || val.isJsonNull()) {
 			bld.append("{");
 			bld.append(val);
 			bld.append("}");
+		} else {
+			bld.append(parent.toString());
+			bld.append(":");
+			bld.append(val);
 		}
 		bld.append("_");
 		bld.append(hashCode());
+		if (parent.isOrphan()) {
+			bld.append("_ORPHAN");
+		}
 		bld.append(">");
 		bld.append("\n");
 

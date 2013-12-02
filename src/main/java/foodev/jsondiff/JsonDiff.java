@@ -114,7 +114,7 @@ public class JsonDiff {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-    boolean accept(Leaf leaf, JzonArray instructions, JzonObject childPatch) {
+	boolean accept(Leaf leaf, JzonArray instructions, JzonObject childPatch) {
 		JzonObject object = (JzonObject) factory.parse(leaf.val.toString());
 		JzonObject patch = factory.createJsonObject();
 		patch.add(MOD, instructions);
@@ -381,15 +381,16 @@ public class JsonDiff {
 			}
 		}
 		// recover all pending orphans: this could be easily optimized
+		int i = 0;
 		for (Leaf fromLeaf : fromLeaves) {
 			if (fromLeaf.isOrphan()) {
-				fromLeaf.recover(fromLeaves);
+				fromLeaf.recover(i, fromLeaves);
 			}
+			i++;
 		}
-		// create patch
 		JzonObject patch = fromLeaves.iterator().next().patch();
 		// prints the new structure
-		// fromLeaves.iterator().next().print();
+//		 fromLeaves.iterator().next().print();
 		return patch;
 
 	}
@@ -448,7 +449,6 @@ public class JsonDiff {
 			leaf.visitor = this;
 		}
 		leaves.add(leaf);
-		parent.leaf = leaf;
 
 		if (el.isJsonObject()) {
 
