@@ -20,4 +20,9 @@ class Root extends Node {
 	public String toString() {
 		return "root";
 	}
+
+	@Override
+	void rehash(Node newParent) {
+		throw new IllegalStateException();
+	}
 }

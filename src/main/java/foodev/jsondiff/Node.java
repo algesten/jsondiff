@@ -22,6 +22,8 @@ abstract class Node implements Cloneable {
 	}
 
 	abstract int doHash(boolean indexed);
+	
+	abstract void rehash(Node newParent);
 
 	@Override
 	public int hashCode() {

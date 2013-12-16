@@ -8,6 +8,18 @@ class ObjNode extends Node {
 		super(parent);
 		this.key = key;
 	}
+	
+	@Override
+	void rehash(Node newParent) {
+		this.parent = newParent;
+		this.parentHashCode = newParent.hashCode;
+		int i = this.parentHashCode;
+
+		i = i * 31 + ObjNode.class.hashCode();
+		i = i * 31 + key.hashCode();
+		hashCode = i;
+	}
+	
 
 	@Override
 	int doHash(boolean indexed) {

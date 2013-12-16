@@ -10,6 +10,16 @@ class ArrNode extends Node {
 	}
 
 	@Override
+	void rehash(Node newParent) {
+		this.parent = newParent;
+		this.parentHashCode = newParent.hashCode;
+		int i = this.parentHashCode;
+
+		i = i * 31 + ArrNode.class.hashCode();
+		hashCode = i;
+	}
+
+	@Override
 	int doHash(boolean indexed) {
 
 		// this must either be the first node in which case passing

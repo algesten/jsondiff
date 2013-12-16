@@ -43,12 +43,11 @@ class Leaf implements Comparable<Leaf> {
 			if (leaf.oper != Oper.DELETE && attach.oper == Oper.DELETE) {
 				return attach.parent.parent.leaf.attach(leaf, this);
 			}
-			leaf.parent.parent = attach.parent;
 			if (leaf.oper == null && (leaf.val.isJsonPrimitive() || leaf.val.isJsonNull())) {
 				leaf.oper = Oper.SET;
 			}
 			attach.newStructure.add(atIndex, leaf);
-			leaf.rehash();
+			leaf.rehash(attach);
 			if (JsonDiff.LOG.isLoggable(Level.FINE))
 				JsonDiff.LOG.info("ATT " + leaf + " @" + this);
 			return true;
@@ -67,24 +66,21 @@ class Leaf implements Comparable<Leaf> {
 			deleted.oper = Oper.SET;
 			deleted.val = with.val;
 			Leaf newParent = deleted.parent.parent.leaf;
-			deleted.parent.parent = newParent.parent;
 			// recover deleted children (orphans)
 			for (Leaf orphan : deleted.children) {
 				orphan.parent.parent = deleted.parent;
 				deleted.newStructure.add(orphan);
 			}
-			deleted.rehash();
+			deleted.rehash(newParent);
 			return true;
 		}
 		return false;
 	}
 
-	void rehash() {
-		parent.hashCode = parent.hashCode();
-		parent.parentHashCode = parent.parent.hashCode;
+	void rehash(Leaf newParent) {
+		parent.rehash(newParent.parent);
 		for (Leaf child : newStructure) {
-			child.parent.parent = parent;
-			child.rehash();
+			child.rehash(this);
 		}
 	}
 
@@ -313,7 +309,7 @@ class Leaf implements Comparable<Leaf> {
 		}
 		return i;
 	}
-	
+
 	void recover(List<Leaf> fromLeaves) {
 		if (isOrphan()) {
 			int thisIndex = exactIndex(fromLeaves, this);
@@ -323,7 +319,7 @@ class Leaf implements Comparable<Leaf> {
 
 	void recover(int thisIndex, List<Leaf> fromLeaves) {
 		if (isOrphan()) {
-			Leaf newParent = null;	
+			Leaf newParent = null;
 			while (newParent == null || (oper != Oper.DELETE && newParent.oper == Oper.DELETE)) {
 				thisIndex--;
 				newParent = fromLeaves.get(thisIndex);
@@ -342,7 +338,7 @@ class Leaf implements Comparable<Leaf> {
 			}
 			if (newParent.attach(this, null)) {
 				if (JsonDiff.LOG.isLoggable(Level.FINE))
-					JsonDiff.LOG.info("RECOVERed " + this + " @" + newParent);	
+					JsonDiff.LOG.info("RECOVERed " + this + " @" + newParent);
 			} else {
 				recover(thisIndex, fromLeaves);
 			}

@@ -344,12 +344,14 @@ public class JsonDiff {
 				fromLeaf.delete(toLeaf, null);
 				fromLeaf = toLeaf;
 			}
+			if (incavaEntry.getAddedEnd() < 0) {
+				continue;
+			}
 			fromLeaf = (fromLeaves.size() > insertionIndex) ? fromLeaves.get(insertionIndex) : fromLeaves.get(fromLeaves.size() - 1);
-			int index = insertionIndex;
-			while (fromLeaf.oper == Oper.DELETE && index > 0) {
+			while (fromLeaf.oper == Oper.DELETE && insertionIndex > 0) {
 				// find a NOT deleted node for set / insertion - parent traversal will be done later
-				index--;
-				fromLeaf = fromLeaves.get(index);
+				insertionIndex--;
+				fromLeaf = fromLeaves.get(insertionIndex);
 			}
 			for (int i = incavaEntry.getAddedStart(); i < incavaEntry.getAddedEnd() + 1; i++) {
 				// ensure not orphan
@@ -390,7 +392,7 @@ public class JsonDiff {
 		}
 		JzonObject patch = fromLeaves.iterator().next().patch();
 		// prints the new structure
-//		 fromLeaves.iterator().next().print();
+		// fromLeaves.iterator().next().print();
 		return patch;
 
 	}
