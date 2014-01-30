@@ -315,6 +315,9 @@ class Leaf implements Comparable<Leaf> {
 			int thisIndex = exactIndex(fromLeaves, this);
 			recover(thisIndex, fromLeaves);
 		}
+		if (parent.parent != null) {
+			parent.parent.leaf.recover(fromLeaves);
+		}
 	}
 
 	void recover(int thisIndex, List<Leaf> fromLeaves) {
