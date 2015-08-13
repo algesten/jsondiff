@@ -6,3 +6,5 @@ site
 /www-test
 /gwt-unitCache
 /war
+.idea
+*.iml
