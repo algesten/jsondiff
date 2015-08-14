@@ -1,15 +1,5 @@
 package foodev.jsondiff;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.logging.Logger;
-
 import foodev.jsondiff.incava.IncavaDiff;
 import foodev.jsondiff.incava.IncavaEntry;
 import foodev.jsondiff.jsonwrap.JzonArray;
@@ -17,9 +7,12 @@ import foodev.jsondiff.jsonwrap.JzonElement;
 import foodev.jsondiff.jsonwrap.JzonObject;
 import foodev.jsondiff.jsonwrap.Wrapper;
 
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.logging.Logger;
+
 /**
- * Util for comparing two json-objects and create a new object with a set of instructions to transform the first to the second. The output of this util can be fed into
- * {@link JsonPatch#apply(JzonObject, JzonObject)}.
+ * Util for comparing two json-objects and create a new object with a set of instructions to transform the first to the second. 
  * 
  * <p>
  * Syntax for instructions:
@@ -50,8 +43,8 @@ import foodev.jsondiff.jsonwrap.Wrapper;
  * </p>
  * 
  * <p>
- * When diffing, the object is expanded to a structure like this: <code><pre>Example: {a:[{b:1,c:2},{d:3}]}
- * </pre></code> Becomes a list of:
+ * When diffing, the object is expanded to a structure like this: <code>Example: {a:[{b:1,c:2},{d:3}]}</code>
+ * Becomes a list of:
  * <ol>
  * <li>Leaf: obj
  * <li>Leaf: array 0
@@ -207,12 +200,12 @@ public class JsonDiff {
 	}
 
 	/**
-	 * Patches the first argument with the second. Accepts two GSON {@link JsonObject} or (if jar is provided) a Jackson style {@link ObjectNode}.
+	 * Patches the first argument with the second. Accepts two GSON JsonObject or (if jar is provided) a Jackson style ObjectNode.
 	 * 
 	 * @param orig
-	 *            Object to patch. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+	 *            Object to patch. One of JsonObject or ObjectNode (if jar available).
 	 * @param patch
-	 *            Object holding patch instructions. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+	 *            Object holding patch instructions. One of JsonObject or ObjectNode (if jar available).
 	 * @throws IllegalArgumentException
 	 *             if the given arguments are not accepted.
 	 */
@@ -235,8 +228,6 @@ public class JsonDiff {
 	 * @return The modified JSON object.
 	 * @throws IllegalArgumentException
 	 *             if the given arguments are not accepted.
-	 * @throws JsonWrapperException
-	 *             if the strings can't be parsed as JSON.
 	 */
 	public String apply(String orig, String patch) throws IllegalArgumentException {
 
@@ -398,13 +389,13 @@ public class JsonDiff {
 	}
 
 	/**
-	 * Runs a diff using underlying JSON parser implementations. Accepts two GSON {@link JsonObject} or (if jar is provided) a Jackson style {@link ObjectNode}. The returned type
+	 * Runs a diff using underlying JSON parser implementations. Accepts two GSON JsonObject or (if jar is provided) a Jackson style ObjectNode. The returned type
 	 * is the same as the received.
 	 * 
 	 * @param from
-	 *            Object to transform from. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+	 *            Object to transform from. One of JsonObject or ObjectNode (if jar available).
 	 * @param to
-	 *            Object to transform to. One of {@link JsonObject} or {@link ObjectNode} (if jar available).
+	 *            Object to transform to. One of JsonObject or ObjectNode (if jar available).
 	 * @return Object containing the instructions. The type will be the same as that passed in constructor.
 	 * @throws IllegalArgumentException
 	 *             if the given arguments are not accepted.
@@ -427,11 +418,9 @@ public class JsonDiff {
 	 *            The origin to transform
 	 * @param to
 	 *            The desired result
-	 * @return The set of instructions to go from -> to as a JSON object {}.
+	 * @return The set of instructions to go from to as a JSON object {}.
 	 * @throws IllegalArgumentException
 	 *             if the given arguments are not accepted.
-	 * @throws JsonWrapperException
-	 *             if the strings can't be parsed as JSON.
 	 */
 	public String diff(String from, String to) throws IllegalArgumentException {
 

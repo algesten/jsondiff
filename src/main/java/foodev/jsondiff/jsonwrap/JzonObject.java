@@ -7,7 +7,6 @@ import java.util.Map.Entry;
  * Common abstraction for json objects.
  * 
  * @since 1.0.0
- * @version @PROJECT_VERSION@
  */
 public interface JzonObject extends JzonElement {
 
@@ -25,7 +24,6 @@ public interface JzonObject extends JzonElement {
 	 * 
 	 * @param key
 	 *            - the key for the new element
-	 * @return the new element
 	 */
 	void add(String key, JzonElement prop);
 
@@ -34,7 +32,6 @@ public interface JzonObject extends JzonElement {
 	 * 
 	 * @param key
 	 *            - the key for the new integer
-	 * @return the new integer
 	 */
 	void addProperty(String key, int prop);
 
