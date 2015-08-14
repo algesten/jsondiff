@@ -95,6 +95,11 @@
 			<name>Nacho G. Mac Dowell</name>
 			<url>https://github.com/nachogmd</url>
 		</developer>
+		<developer>
+			<id>anthonydahanne</id>
+			<name>Anthony Dahanne</name>
+			<url>https://github.com/anthonydahanne</url>
+		</developer>
 	</developers>
 
 	<distributionManagement>
