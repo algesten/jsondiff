@@ -17,6 +17,7 @@
 	<scm>
 		<connection>scm:git:git://github.com/algesten/jsondiff.git</connection>
 		<developerConnection>scm:git:git://github.com/algesten/jsondiff.git</developerConnection>
+		<url>https://github.com/algesten/jsondiff</url>
 	</scm>
 
 	<issueManagement>
