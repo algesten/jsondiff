@@ -61,6 +61,12 @@
 			<optional>true</optional>
 		</dependency>
 
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.5.3</version>
+			<optional>true</optional>
+		</dependency>
 
 		<!-- TEST BELOW -->
 
@@ -88,6 +94,11 @@
 			<id>nachogmd</id>
 			<name>Nacho G. Mac Dowell</name>
 			<url>https://github.com/nachogmd</url>
+		</developer>
+		<developer>
+			<id>anthonydahanne</id>
+			<name>Anthony Dahanne</name>
+			<url>https://github.com/anthonydahanne</url>
 		</developer>
 	</developers>
 
