@@ -4,7 +4,6 @@ package foodev.jsondiff.jsonwrap;
  * Factory wrapper interface for multiple json implementations.
  * 
  * @since 1.0.0
- * @version @PROJECT_VERSION@
  */
 public interface Wrapper {
 

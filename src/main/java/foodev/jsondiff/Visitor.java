@@ -5,7 +5,6 @@ package foodev.jsondiff;
  * Interface that allows filtering patch instructions.
  * 
  * @since 2.0.0
- * @version @PROJECT_VERSION@
  */
 public interface Visitor<E> {
 

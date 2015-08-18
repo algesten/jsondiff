@@ -4,7 +4,6 @@ package foodev.jsondiff.jsonwrap;
  * Common abstaraction for a json array.
  * 
  * @since 1.0.0
- * @version @PROJECT_VERSION@
  */
 public interface JzonArray extends JzonElement {
 
